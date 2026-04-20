@@ -152,20 +152,8 @@ export function TopNav({
     return (
       <header className="bg-black text-white border-b border-white/5 sticky top-0 z-30 h-20 flex items-center w-full">
         <div className="flex items-center justify-between w-full px-8">
-          {/* Left Side: Logo & Branding */}
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 bg-white/5 rounded-lg flex items-center justify-center p-1 border border-white/10">
-              <img 
-                src={APP_CONFIG.logoPath} 
-                alt="Logo" 
-                className="w-full h-full object-contain"
-              />
-            </div>
-            <div className="hidden md:flex flex-col">
-              <h1 className="text-lg font-serif font-bold text-gold-500 leading-none">Diocese of San Pablo</h1>
-              <p className="text-xs text-white/40 font-semibold tracking-wider">Financial Analytics System</p>
-            </div>
-          </div>
+          {/* Left Side: Empty (Logo moved to sidebar) */}
+          <div></div>
 
           
           {/* Right Side: Actions */}
