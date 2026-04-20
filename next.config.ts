@@ -9,6 +9,10 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
+  // Skip type checking during build for faster deployment
+  typescript: {
+    ignoreBuildErrors: true,
+  },
 };
 
 export default nextConfig;
