@@ -28,7 +28,7 @@ interface EntitySummary {
 
 const COLORS = ['#1a472a', '#D4AF37', '#4F46E5', '#06B6D4', '#EC4899'];
 
-export function ConsolidatedFinancialStatement() {
+export function ConsolidatedFinancial() {
   const [entityFilter, setEntityFilter] = useState<'all' | 'parish' | 'school' | 'seminary'>('all');
   const [viewType, setViewType] = useState<'summary' | 'detailed' | 'comparison'>('summary');
 
