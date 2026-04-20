@@ -20,25 +20,81 @@ const mockAnnouncements = [
   {
     id: '1',
     title: 'Financial Reporting Deadline Extended',
-    description: 'The monthly financial submission deadline for April has been extended to April 20th.',
+    description: 'The monthly financial submission deadline for April has been extended to April 20th. Please ensure all documents are submitted through the portal.',
     type: 'info',
     date: new Date('2026-04-18'),
     priority: 'high'
   },
   {
     id: '2',
-    title: 'Diocesan Assembly Scheduled',
-    description: 'Annual diocesan assembly will be held on May 5th at the Cathedral. All parish leaders are invited.',
+    title: 'Diocesan Assembly Scheduled for May',
+    description: 'Annual diocesan assembly will be held on May 5th at the Cathedral. All parish leaders, seminary rectors, and school principals are invited to attend.',
     type: 'event',
     date: new Date('2026-04-17'),
     priority: 'medium'
   },
   {
     id: '3',
-    title: 'New Classification Guidelines Available',
-    description: 'Updated parish classification guidelines for 2026 are now available in the Settings section.',
+    title: 'New Parish Classification Guidelines Released',
+    description: 'Updated parish classification guidelines for 2026 are now available in the Settings section. Review the new criteria for Class A-E designations.',
     type: 'update',
     date: new Date('2026-04-16'),
+    priority: 'medium'
+  },
+  {
+    id: '4',
+    title: 'Training Session: Financial Management Best Practices',
+    description: 'Join us for a webinar on May 2nd at 2:00 PM on financial management best practices for parishes. Registration is open at the diocesan office.',
+    type: 'event',
+    date: new Date('2026-04-15'),
+    priority: 'medium'
+  },
+  {
+    id: '5',
+    title: 'Special Collection: Building Fund Campaign',
+    description: 'The Diocese launches the 2026 Building Fund Campaign. Donations support renovation and maintenance of our diocesan facilities.',
+    type: 'info',
+    date: new Date('2026-04-14'),
+    priority: 'medium'
+  },
+  {
+    id: '6',
+    title: 'Pastoral Letter: Year of Faith Initiative',
+    description: 'Bishop releases pastoral letter launching the "Year of Faith" initiative. All parishes are encouraged to organize faith-building activities.',
+    type: 'update',
+    date: new Date('2026-04-13'),
+    priority: 'medium'
+  },
+  {
+    id: '7',
+    title: 'Easter Celebration Schedule Released',
+    description: 'Official schedule for Easter celebrations at the Cathedral and diocesan parishes has been published. Please coordinate with your parishioners.',
+    type: 'event',
+    date: new Date('2026-04-12'),
+    priority: 'medium'
+  },
+  {
+    id: '8',
+    title: 'New Financial Accountability Standards',
+    description: 'Effective May 1st, all parishes must implement new financial accountability standards. Training materials are available in the Settings portal.',
+    type: 'update',
+    date: new Date('2026-04-10'),
+    priority: 'high'
+  },
+  {
+    id: '9',
+    title: 'Bishop Appointments for Diocesan Roles',
+    description: 'Bishop announces new appointments for Diocesan Vicar for Education and Vicar for Finance. Details available on the diocesan website.',
+    type: 'info',
+    date: new Date('2026-04-09'),
+    priority: 'medium'
+  },
+  {
+    id: '10',
+    title: 'Maintenance Alert: System Updates Scheduled',
+    description: 'The Financial Analytics System will undergo maintenance on April 25th from 10 PM to 2 AM. No access during this period.',
+    type: 'update',
+    date: new Date('2026-04-08'),
     priority: 'medium'
   }
 ];
