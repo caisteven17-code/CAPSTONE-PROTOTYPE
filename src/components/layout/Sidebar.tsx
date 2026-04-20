@@ -61,7 +61,7 @@ export function Sidebar({
     { id: 'school', label: 'Schools', icon: GraduationCap },
     { id: 'projects', label: 'Projects', icon: Briefcase },
     { id: 'aitwin', label: 'AI Twin', icon: Zap },
-    { id: 'consolidated', label: 'Financials', icon: FileText },
+
     { id: 'announcements', label: 'Announcements', icon: Bell },
     { id: 'health', label: 'Health Tracker', icon: Heart },
   ];

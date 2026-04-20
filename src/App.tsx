@@ -14,7 +14,6 @@ import { Projects } from './views/Projects';
 import { AITwin } from './views/AITwin';
 import { Announcements } from './views/Announcements';
 import { HealthTracker } from './views/HealthTracker';
-import { ConsolidatedFinancial } from './views/ConsolidatedFinancial';
 import { BottomNav } from './components/ui/BottomNav';
 import { StewardChatbot } from './components/ui/StewardChatbot';
 import { auth } from './firebase';
@@ -148,8 +147,6 @@ export default function App() {
           return <Announcements />;
         case 'health':
           return <HealthTracker />;
-        case 'consolidated':
-          return <ConsolidatedFinancial />;
         default:
           return (
             <div className="flex items-center justify-center h-[calc(100vh-80px)]">
