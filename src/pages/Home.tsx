@@ -354,8 +354,8 @@ export function Home({ onNavigate }: HomeProps) {
                     { id: '4', entityName: "St. John Seminary", entityType: 'seminary' as const, district: 'District 3', vicariate: 'Holy Family', lastSubmissionDate: new Date('2024-04-10'), status: 'on-time' as const, monthsLate: 0, budgetSet: true, budgetAmount: 2000000 },
                     { id: '5', entityName: "Sacred Heart School", entityType: 'school' as const, district: 'District 2', vicariate: 'San Isidro Labrador', lastSubmissionDate: undefined, status: 'not-submitted' as const, monthsLate: 0, budgetSet: false },
                   ]}
-                  onViewDetails={(submission) => console.log('View details:', submission)}
-                  onExportReport={() => console.log('Export report')}
+                  onViewDetails={(submission) => {}}
+                  onExportReport={() => {}}
                 />
               </div>
 
@@ -369,8 +369,8 @@ export function Home({ onNavigate }: HomeProps) {
                     { id: '4', entityName: "St. John Seminary", currentClass: 'Class A', annualIncome: 2800000, isSubsidized: false, subsidyLocked: false, lastReviewed: '2024-03-20', recommendedAction: 'none' },
                     { id: '5', entityName: "Sacred Heart School", currentClass: 'Class C', annualIncome: 920000, isSubsidized: false, subsidyLocked: false, lastReviewed: '2024-02-15', recommendedAction: 'none' },
                   ]}
-                  onUpdateClassification={(id, updates) => console.log('Update classification:', id, updates)}
-                  onToggleLock={(id, locked) => console.log('Toggle lock:', id, locked)}
+                  onUpdateClassification={(id, updates) => {}}
+                  onToggleLock={(id, locked) => {}}
                 />
               </div>
             </div>

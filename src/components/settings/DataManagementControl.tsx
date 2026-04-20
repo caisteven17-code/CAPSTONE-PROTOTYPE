@@ -188,16 +188,16 @@ export function DataManagementControl() {
         {activeTab === 'submissions' && (
           <SubmissionTracker
             submissions={mockSubmissions}
-            onViewDetails={(submission) => console.log('View details:', submission)}
-            onExportReport={() => console.log('Export report')}
+            onViewDetails={(submission) => {}}
+            onExportReport={() => {}}
           />
         )}
 
         {activeTab === 'classifications' && (
           <ClassificationManagement
             classifications={mockClassifications}
-            onUpdateClassification={(id, updates) => console.log('Update classification:', id, updates)}
-            onToggleLock={(id, locked) => console.log('Toggle lock:', id, locked)}
+            onUpdateClassification={(id, updates) => {}}
+            onToggleLock={(id, locked) => {}}
           />
         )}
       </motion.div>

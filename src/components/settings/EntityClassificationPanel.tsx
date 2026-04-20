@@ -50,8 +50,7 @@ export function EntityClassificationPanel({
         data={classification}
         entityName={entityName}
         onReclassifyClick={() => {
-          // This would trigger a workflow to request diocese review
-          console.log('Request reclassification review');
+          // TODO: Implement workflow to request diocese review
         }}
       />
 
