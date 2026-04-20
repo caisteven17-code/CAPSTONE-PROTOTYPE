@@ -70,22 +70,7 @@ export function Sidebar({
 
   return (
     <aside className="hidden md:flex flex-col w-64 bg-black text-white h-screen sticky top-0 left-0 z-40 shadow-2xl border-r border-white/5">
-      {/* Logo Section */}
-      <div className="p-6 mb-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-white/5 rounded-xl p-1.5 border border-white/10 flex items-center justify-center">
-            <img 
-              src={APP_CONFIG.logoPath} 
-              alt="Diocese Logo" 
-              className="w-full h-full object-contain filter brightness-110"
-            />
-          </div>
-          <div className="flex flex-col">
-            <h1 className="text-[8px] font-black tracking-[0.2em] text-white/40 leading-none mb-0.5">DIOCESE OF</h1>
-            <h2 className="text-xs font-serif font-bold text-gold-400 tracking-wide uppercase leading-tight">San Pablo</h2>
-          </div>
-        </div>
-      </div>
+      {/* Logo Section - Hidden since TopNav displays full branding */}
 
       {/* Main Menu Label */}
       <div className="px-6 mb-4">
