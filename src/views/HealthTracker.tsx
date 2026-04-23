@@ -267,10 +267,10 @@ export function HealthTracker() {
 
         {/* Filters */}
         <div className="flex gap-2 mb-6">
-          {['all', 'birthdays', 'checkups'].map(cat => (
+          {(['all', 'birthdays', 'checkups'] as const).map(cat => (
             <button
               key={cat}
-              onClick={() => setFilter(cat as any)}
+              onClick={() => setFilter(cat)}
               className={`px-4 py-2 rounded-lg transition-all ${
                 filter === cat
                   ? 'bg-rose-500 text-white'
@@ -376,7 +376,7 @@ export function HealthTracker() {
                       <label className="text-sm text-slate-600 mb-1 block">Health Status</label>
                       <select
                         value={formData.healthStatus}
-                        onChange={e => setFormData({ ...formData, healthStatus: e.target.value as any })}
+                        onChange={e => setFormData({ ...formData, healthStatus: e.target.value as 'good' | 'fair' | 'needs-attention' })}
                         className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent outline-none"
                       >
                         <option value="good">Good</option>

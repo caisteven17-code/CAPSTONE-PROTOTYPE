@@ -14,12 +14,14 @@ import { Projects } from './views/Projects';
 import { AITwin } from './views/AITwin';
 import { Announcements } from './views/Announcements';
 import { HealthTracker } from './views/HealthTracker';
+import { ConsolidatedFinancial } from './views/ConsolidatedFinancial';
 import { BottomNav } from './components/ui/BottomNav';
 import { StewardChatbot } from './components/ui/StewardChatbot';
-import { auth } from './firebase';
+import { auth, AuthUser } from './firebase';
 
 export type Role = 'bishop' | 'admin' | 'priest' | 'school' | 'seminary';
 export type Timeframe = '6m' | '1y' | 'all';
+const GENERATE_COMPARISON_REPORT_EVENT = 'generate-comparison-report';
 
 /**
  * Helper function to check if role has diocese-wide access
@@ -37,7 +39,7 @@ export default function App() {
   const [year, setYear] = useState<number>(2026);
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user: { role?: Role } | null) => {
+    const unsubscribe = auth.onAuthStateChanged((user: AuthUser | null) => {
       if (user?.role) {
         setRole(user.role);
         setIsAuthenticated(true);
@@ -47,7 +49,7 @@ export default function App() {
           const roleDefaultTab: Record<Role, string> = {
             bishop: 'home',
             admin: 'home',
-            priest: 'parish',
+            priest: 'parish-dashboard',
             school: 'school',
             seminary: 'seminaries',
           };
@@ -70,7 +72,7 @@ export default function App() {
     
     // Set default tab based on role
     if (loggedInRole === 'priest') {
-      setActiveTab('parish');
+      setActiveTab('parish-dashboard');
     } else if (loggedInRole === 'school') {
       setActiveTab('school');
     } else if (loggedInRole === 'seminary') {
@@ -133,20 +135,27 @@ export default function App() {
     if (role === 'bishop' || role === 'admin') {
       switch (activeTab) {
         case 'dashboard':
-        case 'parish':
           return <BishopDashboard initialEntityType="Parishes" timeframe={timeframe} year={year} onYearChange={setYear} />;
+        case 'parish-dashboard':
+          return <BishopDashboard initialEntityType="Parishes" timeframe={timeframe} year={year} onYearChange={setYear} />;
+        case 'parish-health':
+          return <BishopDashboard initialEntityType="Parishes" timeframe={timeframe} year={year} onYearChange={setYear} />;
+        case 'parish-aitwin':
+          return <AITwin />;
+        case 'priest-dashboard':
+          return <PriestDashboard role="priest" timeframe={timeframe} year={year} onYearChange={setYear} onNavigate={setActiveTab} onLogout={handleLogout} />;
+        case 'priest-health':
+          return <HealthTracker />;
+        case 'priest-aitwin':
+          return <AITwin />;
         case 'seminaries':
           return <BishopDashboard initialEntityType="Seminaries" timeframe={timeframe} year={year} onYearChange={setYear} />;
         case 'school':
           return <BishopDashboard initialEntityType="Diocesan Schools" timeframe={timeframe} year={year} onYearChange={setYear} />;
         case 'projects':
           return <Projects role={role} />;
-        case 'aitwin':
-          return <AITwin />;
         case 'announcements':
           return <Announcements />;
-        case 'health':
-          return <HealthTracker />;
         default:
           return (
             <div className="flex items-center justify-center h-[calc(100vh-80px)]">
@@ -157,22 +166,28 @@ export default function App() {
     } else {
       switch (activeTab) {
         case 'dashboard':
-        case 'parish':
-          return <PriestDashboard role="priest" timeframe={timeframe} year={year} onYearChange={setYear} onNavigate={setActiveTab} onLogout={handleLogout} />;
+        case 'parish-dashboard':
+          return <PriestDashboard role={role} timeframe={timeframe} year={year} onYearChange={setYear} onNavigate={setActiveTab} onLogout={handleLogout} />;
+        case 'parish-health':
+          return <PriestDashboard role={role} timeframe={timeframe} year={year} onYearChange={setYear} onNavigate={setActiveTab} onLogout={handleLogout} />;
+        case 'parish-aitwin':
+          return <AITwin />;
+        case 'priest-dashboard':
+          return <PriestDashboard role={role} timeframe={timeframe} year={year} onYearChange={setYear} onNavigate={setActiveTab} onLogout={handleLogout} />;
+        case 'priest-health':
+          return <HealthTracker />;
+        case 'priest-aitwin':
+          return <AITwin />;
         case 'seminaries':
           return <PriestDashboard role="seminary" timeframe={timeframe} year={year} onYearChange={setYear} onNavigate={setActiveTab} onLogout={handleLogout} />;
         case 'school':
           return <PriestDashboard role="school" timeframe={timeframe} year={year} onYearChange={setYear} onNavigate={setActiveTab} onLogout={handleLogout} />;
         case 'projects':
           return <Projects role={role} />;
-        case 'aitwin':
-          return <AITwin />;
         case 'announcements':
           return <Announcements />;
-        case 'health':
-          return <HealthTracker />;
         case 'consolidated':
-          return <ConsolidatedFinancialStatement />;
+          return <ConsolidatedFinancial />;
         default:
           return (
             <div className="flex items-center justify-center h-[calc(100vh-80px)]">
@@ -208,6 +223,9 @@ export default function App() {
               onTimeframeChange={setTimeframe}
               year={year}
               onYearChange={setYear}
+              onGenerateReport={() => {
+                window.dispatchEvent(new Event(GENERATE_COMPARISON_REPORT_EVENT));
+              }}
             />
           )}
           <main className={`flex-1 overflow-y-auto pb-20 md:pb-0 ${isDioceseAccess ? '' : 'pt-0'}`}>

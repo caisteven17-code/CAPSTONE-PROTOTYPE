@@ -650,6 +650,7 @@ export function BishopDashboard({
   const [formationFilter, setFormationFilter] = useState<'all' | 'propaedeutic' | 'philosophy' | 'theology'>('all');
   const [enrollmentForecastFilter, setEnrollmentForecastFilter] = useState<'all' | 'enrollment' | 'capacity'>('all');
   const [donationTrendsFilter, setDonationTrendsFilter] = useState<'all' | 'actual' | 'potential'>('all');
+  const [donationTrendsMode, setDonationTrendsMode] = useState<'amount' | 'performance'>('performance');
   const [staffRatioFilter, setStaffRatioFilter] = useState<'all' | 'seminarians' | 'staff'>('all');
   const [collectionsDisbursementsFilter, setCollectionsDisbursementsFilter] = useState<'all' | 'collections' | 'disbursements'>('all');
 
@@ -913,10 +914,19 @@ export function BishopDashboard({
 
   const dynamicDonationTrendsData = useMemo(() => {
     const scale = filteredEntities.length / (currentEntities.length || 1);
-    return donationTrendsData.map(d => ({
+    const scaledData = donationTrendsData.map(d => ({
       ...d,
       barValue: d.barValue * scale,
       lineValue: d.lineValue * scale
+    }));
+
+    const totalActual = scaledData.reduce((sum, row) => sum + row.barValue, 0);
+    const totalPotential = scaledData.reduce((sum, row) => sum + row.lineValue, 0);
+
+    return scaledData.map(row => ({
+      ...row,
+      barPercentage: totalActual > 0 ? (row.barValue / totalActual) * 100 : 0,
+      linePercentage: totalPotential > 0 ? (row.lineValue / totalPotential) * 100 : 0,
     }));
   }, [filteredEntities, currentEntities]);
 
@@ -2644,12 +2654,28 @@ export function BishopDashboard({
           {/* Row 5: Donation Trends */}
           <Card className="border-none shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <div>
+              <div className="space-y-3">
                 <h3 className="text-2xl font-bold text-church-black">Donation Trends by Priest Assignment</h3>
+                <div className="inline-flex items-center bg-gray-100 rounded-lg p-1">
+                  <button
+                    type="button"
+                    onClick={() => setDonationTrendsMode('performance')}
+                    className={`px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wide transition-colors ${donationTrendsMode === 'performance' ? 'bg-white text-church-green shadow-sm' : 'text-gray-500 hover:text-church-green'}`}
+                  >
+                    Performance %
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDonationTrendsMode('amount')}
+                    className={`px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wide transition-colors ${donationTrendsMode === 'amount' ? 'bg-white text-church-green shadow-sm' : 'text-gray-500 hover:text-church-green'}`}
+                  >
+                    Income Amount
+                  </button>
+                </div>
               </div>
               <select 
                 value={donationTrendsFilter}
-                onChange={(e) => setDonationTrendsFilter(e.target.value as any)}
+                onChange={(e) => setDonationTrendsFilter(e.target.value as 'all' | 'actual' | 'potential')}
                 className="bg-gray-100 border-none text-[10px] font-bold text-church-green rounded-lg px-3 py-2 outline-none cursor-pointer hover:bg-gray-200 transition-colors"
               >
                 <option value="all">ALL CATEGORIES</option>
@@ -2661,7 +2687,7 @@ export function BishopDashboard({
               <div className="space-y-6">
                 <div className="h-[350px] flex items-center">
                   <div className="w-10 flex-shrink-0 flex items-center justify-center h-full">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] -rotate-90 whitespace-nowrap">Amount (PHP)</span>
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] -rotate-90 whitespace-nowrap">{donationTrendsMode === 'performance' ? 'Performance (%)' : 'Amount (PHP)'}</span>
                   </div>
                   <div className="flex-1 h-full">
                     <ResponsiveContainer width="100%" height="100%">
@@ -2685,7 +2711,7 @@ export function BishopDashboard({
                           axisLine={false} 
                           tickLine={false} 
                           tick={{ fill: '#6B7280', fontSize: 11 }} 
-                          tickFormatter={(value) => formatMillions(value)} 
+                          tickFormatter={(value) => donationTrendsMode === 'performance' ? `${Number(value).toFixed(0)}%` : formatMillions(value)} 
                           width={60} 
                         />
                         <Tooltip 
@@ -2697,8 +2723,10 @@ export function BishopDashboard({
                             padding: '12px'
                           }} 
                           formatter={(value: number, name: string) => [
-                            formatCurrency(value), 
-                            name === 'barValue' ? 'Actual Donations' : 'Projected Potential'
+                            donationTrendsMode === 'performance' ? `${value.toFixed(2)}%` : formatCurrency(value), 
+                            name === 'barValue' || name === 'barPercentage'
+                              ? (donationTrendsMode === 'performance' ? 'Actual Share of Total Income' : 'Actual Donations')
+                              : (donationTrendsMode === 'performance' ? 'Potential Share of Total Income' : 'Projected Potential')
                           ]}
                         />
                         <Legend 
@@ -2707,12 +2735,16 @@ export function BishopDashboard({
                           height={40}
                           iconType="circle"
                           wrapperStyle={{ paddingBottom: '20px', fontSize: '11px', fontWeight: '500' }}
-                          formatter={(value) => value === 'barValue' ? 'Actual Donations' : 'Projected Potential'}
+                          formatter={(value) =>
+                            value === 'barValue' || value === 'barPercentage'
+                              ? (donationTrendsMode === 'performance' ? 'Actual Share of Total Income' : 'Actual Donations')
+                              : (donationTrendsMode === 'performance' ? 'Potential Share of Total Income' : 'Projected Potential')
+                          }
                         />
                         {(donationTrendsFilter === 'all' || donationTrendsFilter === 'actual') && (
                           <Bar 
-                            dataKey="barValue" 
-                            name="Actual Donations"
+                            dataKey={donationTrendsMode === 'performance' ? 'barPercentage' : 'barValue'} 
+                            name={donationTrendsMode === 'performance' ? 'Actual Share of Total Income' : 'Actual Donations'}
                             fill="url(#barGradient)" 
                             radius={[6, 6, 0, 0]} 
                             maxBarSize={45} 
@@ -2722,8 +2754,8 @@ export function BishopDashboard({
                         {(donationTrendsFilter === 'all' || donationTrendsFilter === 'potential') && (
                           <Line 
                             type="monotone" 
-                            dataKey="lineValue" 
-                            name="Projected Potential"
+                            dataKey={donationTrendsMode === 'performance' ? 'linePercentage' : 'lineValue'} 
+                            name={donationTrendsMode === 'performance' ? 'Potential Share of Total Income' : 'Projected Potential'}
                             stroke="#1a472a" 
                             strokeWidth={3} 
                             dot={{ r: 4, fill: '#1a472a', strokeWidth: 2, stroke: '#fff' }}
@@ -2739,11 +2771,11 @@ export function BishopDashboard({
                 <div className="flex items-center gap-6 justify-center mt-4">
                   <div className={`flex items-center gap-2 transition-opacity ${donationTrendsFilter === 'all' || donationTrendsFilter === 'actual' ? 'opacity-100' : 'opacity-30'}`}>
                     <div className="w-3 h-3 rounded-full bg-[#D4AF37]"></div>
-                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Actual Donations</span>
+                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">{donationTrendsMode === 'performance' ? 'Actual Share of Total Income' : 'Actual Donations'}</span>
                   </div>
                   <div className={`flex items-center gap-2 transition-opacity ${donationTrendsFilter === 'all' || donationTrendsFilter === 'potential' ? 'opacity-100' : 'opacity-30'}`}>
                     <div className="w-3 h-3 rounded-full bg-[#1a472a]"></div>
-                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Projected Potential</span>
+                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">{donationTrendsMode === 'performance' ? 'Potential Share of Total Income' : 'Projected Potential'}</span>
                   </div>
                 </div>
               </div>

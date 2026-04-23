@@ -23,6 +23,11 @@ export const COLORS = {
 export const SUBMISSION_CONFIG = {
   DEADLINE_DAY: 15,
   MONTHS_TO_TRACK: ['Aug', 'Oct', 'Dec'] as const,
+  MONTHS_LATE_WARNING: 1,
+  MONTHS_LATE_WARNING_MAX: 3,
+  MONTHS_LATE_ACTION_REQUIRED: 4,
+  MONTHS_TO_DAYS: 30,
+  MILLISECONDS_PER_DAY: 1000 * 3600 * 24,
 } as const;
 
 /** Status badge labels and emojis */

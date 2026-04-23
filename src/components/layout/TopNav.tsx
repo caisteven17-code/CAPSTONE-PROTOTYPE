@@ -1,9 +1,7 @@
 ﻿'use client';
 
 import React, { useState } from 'react';
-import { Calendar, ChevronDown, Church, Check, Menu, X, User } from 'lucide-react';
-import { APP_CONFIG } from '../../constants';
-import { motion, AnimatePresence } from 'motion/react';
+import { Calendar, ChevronDown, Church, Check, User, Download } from 'lucide-react';
 
 import { Role, Timeframe } from '../../App';
 
@@ -15,6 +13,7 @@ interface TopNavProps {
   onTimeframeChange?: (timeframe: Timeframe) => void;
   year?: number;
   onYearChange?: (year: number) => void;
+  onGenerateReport?: () => void;
 }
 
 export function TopNav({ 
@@ -24,11 +23,11 @@ export function TopNav({
   timeframe = '6m', 
   onTimeframeChange,
   year = 2026,
-  onYearChange
+  onYearChange,
+  onGenerateReport
 }: TopNavProps) {
   const [showTimeframeDropdown, setShowTimeframeDropdown] = useState(false);
   const [isYearOpen, setIsYearOpen] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const timeframeLabels: Record<Timeframe, string> = {
     '6m': 'Past 6 Months',
@@ -39,19 +38,6 @@ export function TopNav({
   const handleTimeframeSelect = (tf: Timeframe) => {
     onTimeframeChange?.(tf);
     setShowTimeframeDropdown(false);
-  };
-
-  const navItems = [
-    { id: 'home', label: 'Home' },
-    { id: 'parish', label: 'Parish' },
-    { id: 'seminaries', label: 'Seminaries' },
-    { id: 'school', label: 'School' },
-    { id: 'projects', label: 'Projects' },
-  ];
-
-  const handleNavigate = (page: string) => {
-    onNavigate?.(page);
-    setIsMobileMenuOpen(false);
   };
 
   if (role === 'priest' || role === 'school' || role === 'seminary') {
@@ -150,18 +136,18 @@ export function TopNav({
 
   if (role === 'bishop' || role === 'admin') {
     return (
-      <header className="bg-black text-white border-b border-white/5 sticky top-0 z-30 h-20 flex items-center w-full">
+      <header className="bg-black text-white border-b border-white/5 sticky top-0 z-30 h-16 flex items-center w-full">
         <div className="flex items-center justify-between w-full px-8">
           {/* Left Side: Empty (Logo moved to sidebar) */}
           <div></div>
 
           
           {/* Right Side: Actions */}
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4">
             <div className="relative">
               <button 
                 onClick={() => setShowTimeframeDropdown(!showTimeframeDropdown)}
-                className="flex items-center gap-2 bg-white/5 text-white px-5 py-2.5 rounded-xl text-xs font-bold hover:bg-white/10 transition-colors border border-white/10"
+                className="flex items-center gap-2 bg-white/5 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-white/10 transition-colors border border-white/10"
               >
                 <Calendar className="w-4 h-4 text-white/40" />
                 <span className="hidden sm:inline">{timeframeLabels[timeframe]}</span>
@@ -189,7 +175,7 @@ export function TopNav({
             <div className="relative">
               <button 
                 onClick={() => setIsYearOpen(!isYearOpen)}
-                className="flex items-center gap-2 bg-white/5 text-white px-5 py-2.5 rounded-xl text-xs font-bold hover:bg-white/10 transition-colors border border-white/10"
+                className="flex items-center gap-2 bg-white/5 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-white/10 transition-colors border border-white/10"
               >
                 <span>{year}</span>
                 <ChevronDown className={`w-4 h-4 text-white/40 transition-transform ${isYearOpen ? 'rotate-180' : ''}`} />
@@ -215,6 +201,17 @@ export function TopNav({
                 </div>
               )}
             </div>
+
+            {(currentPage === 'priest-dashboard' || currentPage === 'parish-dashboard') && (
+              <button
+                type="button"
+                onClick={onGenerateReport}
+                className="flex items-center gap-2 bg-gold-500 text-black px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-[0.15em] hover:bg-gold-600 transition-colors border border-gold-600"
+              >
+                <Download className="w-4 h-4" />
+                Generate Report
+              </button>
+            )}
             
             <button 
               onClick={() => onNavigate?.('settings')}

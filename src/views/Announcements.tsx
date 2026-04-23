@@ -229,7 +229,7 @@ export function Announcements() {
                       </label>
                       <select
                         value={formData.category}
-                        onChange={e => setFormData({ ...formData, category: e.target.value as any })}
+                        onChange={e => setFormData({ ...formData, category: e.target.value as 'general' | 'financial' | 'administrative' | 'event' })}
                         className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                       >
                         <option value="general">General</option>
@@ -245,7 +245,7 @@ export function Announcements() {
                       </label>
                       <select
                         value={formData.priority}
-                        onChange={e => setFormData({ ...formData, priority: e.target.value as any })}
+                        onChange={e => setFormData({ ...formData, priority: e.target.value as 'low' | 'medium' | 'high' })}
                         className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                       >
                         <option value="low">Low</option>

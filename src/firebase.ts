@@ -1,44 +1,60 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+
+/** Mock user type for local-only authentication */
+export interface AuthUser {
+  id?: string;
+  email?: string;
+  role?: 'bishop' | 'admin' | 'priest' | 'school' | 'seminary';
+  entityName?: string;
+  entityType?: string;
+}
+
+/** Auth state callback function type */
+type AuthStateCallback = (user: AuthUser | null) => void;
+
+/** Unsubscribe function type */
+type Unsubscriber = () => void;
 
 // Mock Firebase for local-only operation
 export const db = {
   collection: () => ({}),
   doc: () => ({}),
-} as any;
+};
 
 export const auth = {
-  get currentUser() {
+  get currentUser(): AuthUser | null {
     if (typeof window === 'undefined') return null;
     return JSON.parse(localStorage.getItem('currentUser') || 'null');
   },
-  onAuthStateChanged: (callback: any) => {
+  onAuthStateChanged: (callback: AuthStateCallback): Unsubscriber => {
     if (typeof window === 'undefined') {
       callback(null);
       return () => {};
     }
-    const user = JSON.parse(localStorage.getItem('currentUser') || 'null');
+    const user: AuthUser | null = JSON.parse(localStorage.getItem('currentUser') || 'null');
     callback(user);
     return () => {};
   },
-  signOut: async () => {
+  signOut: async (): Promise<void> => {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('currentUser');
       window.location.reload();
     }
   }
-} as any;
+};
 
 /**
  * Hook to get current user authentication state
+ * @returns Object containing authenticated user and loading state
  */
 export function useAuth() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((authUser: any) => {
+    const unsubscribe = auth.onAuthStateChanged((authUser: AuthUser | null) => {
       setUser(authUser);
       setLoading(false);
     });

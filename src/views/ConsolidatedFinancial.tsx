@@ -263,10 +263,10 @@ export function ConsolidatedFinancial() {
 
         {/* View Controls */}
         <div className="flex gap-2 mb-6">
-          {['summary', 'detailed', 'comparison'].map(type => (
+          {(['summary', 'detailed', 'comparison'] as const).map(type => (
             <button
               key={type}
-              onClick={() => setViewType(type as any)}
+              onClick={() => setViewType(type)}
               className={`px-4 py-2 rounded-lg transition-all ${
                 viewType === type
                   ? 'bg-purple-500 text-white'
@@ -375,10 +375,10 @@ export function ConsolidatedFinancial() {
           <div className="space-y-6">
             {/* Entity Filter */}
             <div className="flex gap-2">
-              {['all', 'parish', 'school', 'seminary'].map(type => (
+              {(['all', 'parish', 'school', 'seminary'] as const).map(type => (
                 <button
                   key={type}
-                  onClick={() => setEntityFilter(type as any)}
+                  onClick={() => setEntityFilter(type)}
                   className={`px-4 py-2 rounded-lg transition-all ${
                     entityFilter === type
                       ? 'bg-purple-500 text-white'
