@@ -27,6 +27,8 @@ import { DiagnosticCard } from '../components/ui/DiagnosticCard';
 import { StewardChatbot } from '../components/ui/StewardChatbot';
 import { motion, AnimatePresence } from 'motion/react';
 import { formatCurrency, formatNumber, formatMillions } from '../lib/format';
+import SeminaryAnalyticsDashboard from '../components/analytics/SeminaryAnalyticsDashboard';
+
 
 const weeklyDeclineDataRaw = [
   { parish: 'San Gabriel Arkanghel Parish', vicariate: 'St. Paul the First Hermit', class: 'Class B', w1: 412000, w2: 386000, w3: 351000, w4: 322000, trend: -22, type: 'down' },
@@ -1471,15 +1473,22 @@ export function BishopDashboard({
         </Card>
       </div>
 
-      {/* Analytics Toggle (Line + Text) */}
-      <div className="relative flex justify-center py-6">
-        <div className="absolute inset-0 flex items-center" aria-hidden="true">
-          <div className="w-full border-t border-[#E2E8F0]"></div>
+      {/* Analytics Section */}
+      {entityType === 'Seminaries' ? (
+        <div className="mt-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+          <SeminaryAnalyticsDashboard />
         </div>
-        <div className="relative flex justify-center">
-          <span className="bg-church-light px-6 text-[11px] font-bold text-[#94A3B8] uppercase tracking-[0.4em]">Diocese Analytics</span>
-        </div>
-      </div>
+      ) : (
+        <>
+          {/* Analytics Toggle (Line + Text) */}
+          <div className="relative flex justify-center py-6">
+            <div className="absolute inset-0 flex items-center" aria-hidden="true">
+              <div className="w-full border-t border-[#E2E8F0]"></div>
+            </div>
+            <div className="relative flex justify-center">
+              <span className="bg-church-light px-6 text-[11px] font-bold text-[#94A3B8] uppercase tracking-[0.4em]">Diocese Analytics</span>
+            </div>
+          </div>
 
       {/* Tabs */}
       <div className="flex justify-center mb-8">
@@ -3499,7 +3508,7 @@ export function BishopDashboard({
             </>
           )}
         </div>
-      )}
+          )}
         </>
       )}
 
