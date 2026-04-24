@@ -1,7 +1,7 @@
 ﻿'use client';
 
 
-import { FinancialRecord, FinancialHealthScore, DiagnosticResult, EntityClass, Project, Donation } from '../types';
+import { FinancialRecord, FinancialHealthScore, DiagnosticResult, EntityClass, Project, Donation, ProjectExpense } from '../types';
 import { ALL_PARISHES, INITIAL_SEMINARIES, INITIAL_SCHOOLS } from '../constants';
 
 export const DEFAULT_RECORDS: FinancialRecord[] = [
@@ -90,6 +90,15 @@ function getStoredDonations(): Donation[] {
 
 function saveStoredDonations(donations: Donation[]) {
   localStorage.setItem('donations', JSON.stringify(donations));
+}
+
+function getStoredExpenses(): ProjectExpense[] {
+  const stored = localStorage.getItem('project_expenses');
+  return stored ? JSON.parse(stored) : [];
+}
+
+function saveStoredExpenses(expenses: ProjectExpense[]) {
+  localStorage.setItem('project_expenses', JSON.stringify(expenses));
 }
 
 export const dataService = {
@@ -647,11 +656,28 @@ export const dataService = {
     return donations;
   },
 
+  async getExpenses(projectId?: string): Promise<ProjectExpense[]> {
+    const expenses = getStoredExpenses();
+
+    if (projectId) {
+      return expenses.filter((expense) => expense.projectId === projectId);
+    }
+
+    return expenses;
+  },
+
   async saveDonation(donation: Donation) {
     const donations = getStoredDonations();
     donations.push({ ...donation, id: donation.id || Math.random().toString(36).substr(2, 9) });
     saveStoredDonations(donations);
     window.dispatchEvent(new Event('donations_update'));
+  },
+
+  async saveExpense(expense: ProjectExpense) {
+    const expenses = getStoredExpenses();
+    expenses.push({ ...expense, id: expense.id || Math.random().toString(36).substr(2, 9) });
+    saveStoredExpenses(expenses);
+    window.dispatchEvent(new Event('expenses_update'));
   },
 
   subscribeToDonations(callback: (donations: Donation[]) => void, projectId?: string) {
@@ -664,6 +690,18 @@ export const dataService = {
     update();
     
     return () => window.removeEventListener('donations_update', update);
+  },
+
+  subscribeToExpenses(callback: (expenses: ProjectExpense[]) => void, projectId?: string) {
+    const update = async () => {
+      const expenses = await this.getExpenses(projectId);
+      callback(expenses);
+    };
+
+    window.addEventListener('expenses_update', update);
+    update();
+
+    return () => window.removeEventListener('expenses_update', update);
   },
 
   async saveProject(project: Project) {
@@ -697,4 +735,3 @@ export const dataService = {
     return () => window.removeEventListener('projects_update', update);
   }
 };
-

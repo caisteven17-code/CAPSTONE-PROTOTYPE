@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import React, { useState } from 'react';
-import { X, DollarSign, Calendar, User, CreditCard, FileText, Check, ChevronDown } from 'lucide-react';
+import { X, DollarSign, Calendar, User, CreditCard, FileText, Check, ChevronDown, Upload } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { formatCurrency } from '../../lib/format';
 import { Donation } from '../../types';
@@ -20,7 +20,7 @@ export function DonationEntryModal({ isOpen, onClose, onSubmit, projectId, proje
     amount: '',
     date: new Date().toISOString().split('T')[0],
     paymentMethod: 'Cash' as Donation['paymentMethod'],
-    receiptIssued: false,
+    receiptProofName: '',
     notes: ''
   });
 
@@ -38,10 +38,18 @@ export function DonationEntryModal({ isOpen, onClose, onSubmit, projectId, proje
         amount: Number(formData.amount),
         date: formData.date,
         paymentMethod: formData.paymentMethod,
-        receiptIssued: formData.receiptIssued,
+        receiptProofName: formData.receiptProofName || undefined,
         notes: formData.notes
       });
       setIsSubmitting(false);
+      setFormData({
+        donorName: '',
+        amount: '',
+        date: new Date().toISOString().split('T')[0],
+        paymentMethod: 'Cash',
+        receiptProofName: '',
+        notes: ''
+      });
       onClose();
     }, 1000);
   };
@@ -180,17 +188,21 @@ export function DonationEntryModal({ isOpen, onClose, onSubmit, projectId, proje
                 />
               </div>
 
-              <div className="flex items-center gap-4 py-2 bg-gold-50/30 p-4 rounded-2xl border border-gold-100/50">
-                <button 
-                  type="button"
-                  onClick={() => setFormData({ ...formData, receiptIssued: !formData.receiptIssued })}
-                  className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all ${formData.receiptIssued ? 'bg-gold-500 text-church-green-dark shadow-lg shadow-gold-500/20' : 'bg-white border border-gray-200 text-transparent'}`}
-                >
-                  <Check className="w-5 h-5" />
-                </button>
-                <div>
-                  <span className="text-sm font-bold text-church-black block">Official Receipt Issued</span>
-                  <span className="text-[10px] text-gray-500 uppercase tracking-wider font-medium">Generate and send digital copy</span>
+              <div className="space-y-2">
+                <label className="text-[11px] font-bold text-gold-700 uppercase tracking-[0.2em] flex items-center gap-2">
+                  <Upload className="w-3.5 h-3.5" />
+                  Proof Of Receipt
+                </label>
+                <div className="rounded-2xl border border-gold-100/50 bg-gold-50/30 p-4">
+                  <input
+                    type="file"
+                    accept=".pdf,image/*"
+                    onChange={(e) => setFormData({ ...formData, receiptProofName: e.target.files?.[0]?.name || '' })}
+                    className="block w-full text-sm text-gray-500 file:mr-4 file:rounded-xl file:border-0 file:bg-white file:px-4 file:py-2.5 file:text-xs file:font-bold file:uppercase file:tracking-widest file:text-gold-700 hover:file:bg-gold-100"
+                  />
+                  <p className="mt-3 text-[10px] font-medium uppercase tracking-wider text-gray-500">
+                    {formData.receiptProofName ? `Selected: ${formData.receiptProofName}` : 'Attach a receipt image or PDF if available'}
+                  </p>
                 </div>
               </div>
 

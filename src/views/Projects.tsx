@@ -1,9 +1,9 @@
 ﻿'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter, LayoutGrid, List as ListIcon, ChevronDown, Check, Target, Users, User, TrendingUp, X, Building2, Church, GraduationCap, School } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Plus, Search, Filter, LayoutGrid, ChevronDown, Check, Target, User, Building2, Church, GraduationCap, School } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Project, Donation, ProjectCategory, EntityType } from '../types';
+import { Project, Donation, ProjectCategory, EntityType, ProjectExpense } from '../types';
 import { ProjectDashboardCard } from '../components/projects/ProjectDashboardCard';
 import { ProjectDetailPage } from '../components/projects/ProjectDetailPage';
 import { ProjectCreationForm } from '../components/projects/ProjectCreationForm';
@@ -17,6 +17,7 @@ interface ProjectsProps {
 export function Projects({ role }: ProjectsProps) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [donations, setDonations] = useState<Donation[]>([]);
+  const [expenses, setExpenses] = useState<ProjectExpense[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -62,21 +63,37 @@ export function Projects({ role }: ProjectsProps) {
       }
     );
 
+    const unsubscribeExpenses = dataService.subscribeToExpenses(
+      (updatedExpenses) => {
+        setExpenses(updatedExpenses);
+      }
+    );
+
     return () => {
       unsubscribeProjects();
       unsubscribeDonations();
+      unsubscribeExpenses();
     };
   }, [userContext, filterEntityType]);
 
-  const isParish = role === 'priest' || role === 'school' || role === 'seminary' || role === 'bishop' || role === 'admin';
   const isDiocese = role === 'bishop' || role === 'admin';
 
   const filteredProjects = projects.filter(p => {
-    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                         p.entityId.toLowerCase().includes(searchQuery.toLowerCase());
+    const query = searchQuery.toLowerCase();
+    const matchesSearch = p.name.toLowerCase().includes(query) || 
+                         p.entityId.toLowerCase().includes(query) ||
+                         p.category.toLowerCase().includes(query);
     const matchesCategory = filterCategory === 'All' || p.category === filterCategory;
     return matchesSearch && matchesCategory;
   });
+
+  const projectSummary = useMemo(() => {
+    const seminaryProjects = projects.filter((project) => project.entityType === 'seminary').length;
+    const parishProjects = projects.filter((project) => project.entityType === 'parish').length;
+    const schoolProjects = projects.filter((project) => project.entityType === 'school').length;
+
+    return { seminaryProjects, parishProjects, schoolProjects };
+  }, [projects]);
 
   const handleAddProject = (newProject: Omit<Project, 'id' | 'currentAmount' | 'healthScore' | 'successProbability' | 'recommendation' | 'entityId' | 'entityType'>) => {
     if (!userContext) return;
@@ -113,6 +130,23 @@ export function Projects({ role }: ProjectsProps) {
     }
   };
 
+  const handleAddExpense = (newExpense: Omit<ProjectExpense, 'id'>) => {
+    dataService.saveExpense(newExpense as ProjectExpense);
+
+    const projectToUpdate = projects.find((p) => p.id === newExpense.projectId);
+    if (projectToUpdate) {
+      const updatedTotalExpenses = (projectToUpdate.totalExpenses || 0) + newExpense.amount;
+      dataService.saveProject({
+        ...projectToUpdate,
+        totalExpenses: updatedTotalExpenses,
+      });
+    }
+
+    if (selectedProject?.id === newExpense.projectId) {
+      setSelectedProject((prev) => prev ? { ...prev, totalExpenses: (prev.totalExpenses || 0) + newExpense.amount } : null);
+    }
+  };
+
   const handleCloneProject = (project: Project) => {
     const clonedProject: Project = {
       ...project,
@@ -144,8 +178,10 @@ export function Projects({ role }: ProjectsProps) {
       <ProjectDetailPage 
         project={selectedProject}
         donations={donations.filter(d => d.projectId === selectedProject.id)}
+        expenses={expenses.filter((expense) => expense.projectId === selectedProject.id)}
         onBack={() => setSelectedProject(null)}
         onAddDonation={handleAddDonation}
+        onAddExpense={handleAddExpense}
         onCloneProject={handleCloneProject}
         role={role}
       />
@@ -158,7 +194,7 @@ export function Projects({ role }: ProjectsProps) {
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
           <div>
-            <h1 className="text-4xl font-serif font-bold text-church-black tracking-tight">Project Management</h1>
+            <h1 className="text-4xl font-serif font-bold text-church-black tracking-tight">Projects</h1>
             <div className="flex items-center gap-2 mt-2">
               <span className="text-xs font-bold text-gold-600 uppercase tracking-widest bg-gold-50 px-2 py-1 rounded-md">
                 {userContext?.type}
@@ -167,7 +203,9 @@ export function Projects({ role }: ProjectsProps) {
                 {userContext?.id}
               </span>
             </div>
-            <p className="text-base text-gray-500 font-medium mt-2 max-w-2xl">Track fundraising progress, manage donations, and leverage AI-powered insights for your institution's mission-critical projects.</p>
+            <p className="text-base text-gray-500 font-medium mt-2 max-w-2xl">
+              Track fundraising progress, monitor delivery status, and compare project performance across diocesan institutions.
+            </p>
           </div>
           <motion.button 
             whileHover={{ scale: 1.02 }}
@@ -179,6 +217,28 @@ export function Projects({ role }: ProjectsProps) {
             NEW PROJECT
           </motion.button>
         </div>
+
+        {isDiocese && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
+            {[
+              { label: 'Parish Projects', value: projectSummary.parishProjects, icon: Church, tone: 'bg-blue-50 text-blue-700 border-blue-100' },
+              { label: 'Seminary Projects', value: projectSummary.seminaryProjects, icon: GraduationCap, tone: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
+              { label: 'School Projects', value: projectSummary.schoolProjects, icon: School, tone: 'bg-amber-50 text-amber-700 border-amber-100' },
+            ].map((item) => (
+              <div key={item.label} className={`rounded-3xl border px-5 py-4 ${item.tone}`}>
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.25em] opacity-70">{item.label}</p>
+                    <p className="mt-2 text-2xl font-serif font-bold">{item.value}</p>
+                  </div>
+                  <div className="h-11 w-11 rounded-2xl bg-white/70 flex items-center justify-center">
+                    <item.icon className="w-5 h-5" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Summary Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
@@ -210,7 +270,7 @@ export function Projects({ role }: ProjectsProps) {
             <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-gold-500 transition-colors" />
             <input 
               type="text"
-              placeholder="Search projects by name, institution, or category..."
+              placeholder="Search by project name, institution, or category..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-14 pr-6 py-4 bg-white border border-gray-100 rounded-2xl text-sm font-medium focus:outline-none focus:ring-4 focus:ring-gold-500/10 focus:border-gold-500 focus:bg-white transition-all shadow-sm placeholder:text-gray-300"
@@ -348,7 +408,7 @@ export function Projects({ role }: ProjectsProps) {
                 <Search className="w-10 h-10" />
               </div>
               <h3 className="text-2xl font-serif font-bold text-church-black mb-2">No projects found</h3>
-              <p className="text-gray-400 max-w-sm mx-auto">Try adjusting your search or filters to find the projects you're looking for.</p>
+              <p className="text-gray-400 max-w-sm mx-auto">Try adjusting the search or filters to surface matching projects for this view.</p>
               <button 
                 onClick={() => { setSearchQuery(''); setFilterCategory('All'); setFilterEntityType('All'); }}
                 className="mt-8 text-gold-600 font-bold text-sm hover:text-gold-700 transition-colors underline underline-offset-8"

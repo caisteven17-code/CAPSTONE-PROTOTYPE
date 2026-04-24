@@ -170,6 +170,19 @@ export interface Donation {
   amount: number;
   date: string;
   paymentMethod: 'Cash' | 'Check' | 'Online' | 'Bank Transfer';
-  receiptIssued: boolean;
+  receiptIssued?: boolean;
+  receiptProofName?: string;
   notes?: string;
+}
+
+export interface ProjectExpense {
+  id: string;
+  projectId: string;
+  description: string;
+  amount: number;
+  date: string;
+  paymentMethod: 'Cash' | 'Check' | 'Online' | 'Bank Transfer';
+  notes?: string;
+  receiptReference?: string;
+  proofFileName?: string;
 }

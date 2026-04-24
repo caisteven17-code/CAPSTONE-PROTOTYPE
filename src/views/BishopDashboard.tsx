@@ -633,6 +633,7 @@ export function BishopDashboard({
 }: BishopDashboardProps) {
   const [analyticsView, setAnalyticsView] = useState<'descriptive' | 'predictive' | 'prescriptive' | 'health'>('descriptive');
   const [entityType, setEntityType] = useState(initialEntityType);
+  const [seminaryActiveTab, setSeminaryActiveTab] = useState(0);
 
   useEffect(() => {
     setEntityType(initialEntityType);
@@ -1474,65 +1475,49 @@ export function BishopDashboard({
       </div>
 
       {/* Analytics Section */}
+      {/* Analytics Toggle (Line + Text) */}
+      <div className="relative flex justify-center py-6">
+        <div className="absolute inset-0 flex items-center" aria-hidden="true">
+          <div className="w-full border-t border-[#E2E8F0]"></div>
+        </div>
+        <div className="relative flex justify-center">
+          <span className="bg-church-light px-6 text-[11px] font-bold text-[#94A3B8] uppercase tracking-[0.4em]">
+            {entityType === 'Seminaries' ? 'Seminary Strategic Analytics' : 'Diocese Analytics'}
+          </span>
+        </div>
+      </div>
+
       {entityType === 'Seminaries' ? (
         <div className="mt-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-          <SeminaryAnalyticsDashboard />
+          <SeminaryAnalyticsDashboard 
+            activeTab={seminaryActiveTab} 
+            onTabChange={setSeminaryActiveTab} 
+          />
         </div>
       ) : (
         <>
-          {/* Analytics Toggle (Line + Text) */}
-          <div className="relative flex justify-center py-6">
-            <div className="absolute inset-0 flex items-center" aria-hidden="true">
-              <div className="w-full border-t border-[#E2E8F0]"></div>
-            </div>
-            <div className="relative flex justify-center">
-              <span className="bg-church-light px-6 text-[11px] font-bold text-[#94A3B8] uppercase tracking-[0.4em]">Diocese Analytics</span>
-            </div>
-          </div>
 
       {/* Tabs */}
       <div className="flex justify-center mb-8">
-        <div className="inline-flex bg-black rounded-full p-1.5 w-full max-w-6xl items-center shadow-xl">
-          <button
-            onClick={() => setAnalyticsView("descriptive")}
-            className={`flex-1 rounded-full text-sm font-medium transition-all uppercase tracking-wide ${
-              analyticsView === "descriptive" 
-                ? "bg-white text-[#d4af37] py-5 px-8 shadow-lg -my-1.5 -mx-1.5" 
-                : "bg-transparent text-gray-500 py-3 px-8"
-            }`}
-          >
-            Descriptive
-          </button>
-          <button
-            onClick={() => setAnalyticsView("health")}
-            className={`flex-1 rounded-full text-sm font-medium transition-all uppercase tracking-wide ${
-              analyticsView === "health" 
-                ? "bg-white text-[#d4af37] py-5 px-8 shadow-lg -my-1.5 -mx-1.5" 
-                : "bg-transparent text-gray-500 py-3 px-8"
-            }`}
-          >
-            Diagnostic
-          </button>
-          <button
-            onClick={() => setAnalyticsView("predictive")}
-            className={`flex-1 rounded-full text-sm font-medium transition-all uppercase tracking-wide ${
-              analyticsView === "predictive" 
-                ? "bg-white text-[#d4af37] py-5 px-8 shadow-lg -my-1.5 -mx-1.5" 
-                : "bg-transparent text-gray-500 py-3 px-8"
-            }`}
-          >
-            Predictive
-          </button>
-          <button
-            onClick={() => setAnalyticsView("prescriptive")}
-            className={`flex-1 rounded-full text-sm font-medium transition-all uppercase tracking-wide ${
-              analyticsView === "prescriptive" 
-                ? "bg-white text-[#d4af37] py-5 px-8 shadow-lg -my-1.5 -mx-1.5" 
-                : "bg-transparent text-gray-500 py-3 px-8"
-            }`}
-          >
-            Prescriptive
-          </button>
+        <div className="grid grid-cols-4 bg-black rounded-full p-1.5 w-full max-w-6xl items-center shadow-xl">
+          {[
+            { label: "Descriptive", view: "descriptive" },
+            { label: "Diagnostic", view: "health" },
+            { label: "Predictive", view: "predictive" },
+            { label: "Prescriptive", view: "prescriptive" }
+          ].map((tab) => (
+            <button
+              key={tab.view}
+              onClick={() => setAnalyticsView(tab.view as any)}
+              className={`w-full rounded-full text-[10px] font-black transition-all uppercase tracking-[0.2em] ${
+                analyticsView === tab.view
+                  ? "bg-white text-[#d4af37] py-4 shadow-lg"
+                  : "bg-transparent text-gray-500 py-3 hover:text-white/70"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -1581,7 +1566,7 @@ export function BishopDashboard({
               </div>
               <CardHeader className="relative z-10">
                 <h3 className="text-xl font-bold text-gold-400 uppercase tracking-wide">Health Insights</h3>
-                <p className="text-sm text-white/60">AI-generated summary</p>
+                <p className="text-sm text-white/60">System summary</p>
               </CardHeader>
               <CardContent className="relative z-10 space-y-4">
                 <div className="bg-white/10 p-4 rounded-xl border border-white/10">
@@ -3511,6 +3496,8 @@ export function BishopDashboard({
           )}
         </>
       )}
+    </>
+  )}
 
       {entityFilter === 'All Entities' && <StewardChatbot />}
     </div>

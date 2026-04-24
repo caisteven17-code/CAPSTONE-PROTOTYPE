@@ -841,26 +841,46 @@ export function PriestDashboard({
           className="lg:col-span-2 bg-gradient-to-br from-[#FFFBF0] via-white to-white border-none rounded-[1.5rem] p-5 shadow-xl flex flex-col justify-center relative overflow-hidden group"
         >
           <div className="absolute top-0 right-0 w-64 h-64 bg-gold-500/5 rounded-full -mr-32 -mt-32 blur-3xl group-hover:bg-gold-500/10 transition-colors duration-700"></div>
-          <div className="space-y-5 relative z-10">
-            <div className="inline-flex items-center gap-2 bg-gold-50 text-gold-600 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.2em] border border-gold-100 shadow-sm">
-              <Sparkles size={12} />
-              <span>Welcome</span>
-            </div>
-            <h2 className="font-serif text-4xl md:text-5xl text-church-green leading-[1.1] tracking-tight">
-              {entityLabel} <br className="hidden md:block" />
-              <span className="text-gold-600 italic">Dashboard</span>
-            </h2>
-            <div className="flex flex-wrap items-center gap-2 pt-1">
-              <span className="text-[10px] font-black uppercase tracking-wider text-gray-600 bg-gray-50 border border-gray-100 rounded-lg px-3 py-1.5 shadow-sm">
-                {displayEntityName}
-              </span>
-              {role === 'priest' && (
-                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-1.5 shadow-sm flex items-center gap-1.5">
-                  <AlertTriangle size={12} />
-                  Medical Results Follow-up
+          <div className={`relative z-10 ${role === 'priest' ? 'grid gap-5 md:grid-cols-[minmax(0,1fr)_220px] md:items-center' : 'space-y-5'}`}>
+            <div className="space-y-5">
+              <div className="inline-flex items-center gap-2 bg-gold-50 text-gold-600 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.2em] border border-gold-100 shadow-sm">
+                <Sparkles size={12} />
+                <span>Welcome</span>
+              </div>
+              <h2 className="font-serif text-4xl md:text-5xl text-church-green leading-[1.1] tracking-tight">
+                {entityLabel} <br className="hidden md:block" />
+                <span className="text-gold-600 italic">Dashboard</span>
+              </h2>
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <span className="text-[10px] font-black uppercase tracking-wider text-gray-600 bg-gray-50 border border-gray-100 rounded-lg px-3 py-1.5 shadow-sm">
+                  {displayEntityName}
                 </span>
-              )}
+                {role === 'priest' && (
+                  <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-1.5 shadow-sm flex items-center gap-1.5">
+                    <AlertTriangle size={12} />
+                    Medical Results Follow-up
+                  </span>
+                )}
+              </div>
             </div>
+
+            {role === 'priest' && (
+              <div className="relative mx-auto hidden h-full w-full max-w-[220px] md:flex items-end justify-center">
+                <div className="absolute inset-x-6 bottom-0 h-24 rounded-[2rem] bg-gradient-to-t from-black/10 to-transparent blur-2xl"></div>
+                <div className="relative flex h-[240px] w-[180px] items-end justify-center">
+                  <div className="absolute bottom-0 h-[190px] w-[132px] rounded-t-[4rem] rounded-b-[2.4rem] bg-gradient-to-b from-black via-[#161616] to-[#050505] shadow-[0_24px_40px_rgba(0,0,0,0.25)]"></div>
+                  <div className="absolute bottom-[126px] h-7 w-10 rounded-b-2xl bg-white shadow-sm"></div>
+                  <div className="absolute bottom-[112px] h-12 w-16 rounded-t-[1rem] bg-[#0f0f0f]"></div>
+                  <div className="absolute bottom-[176px] h-16 w-16 rounded-full bg-[#f3d8bc] shadow-md"></div>
+                  <div className="absolute bottom-[206px] h-9 w-[74px] rounded-t-full rounded-b-[1.6rem] bg-[#151515]"></div>
+                  <div className="absolute bottom-[104px] flex w-full justify-center">
+                    <div className="rounded-full border border-gold-200 bg-white/95 px-3 py-1 text-[9px] font-black uppercase tracking-[0.25em] text-gold-600 shadow-lg">
+                      Parish Priest
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </FadeIn>
         
@@ -1199,43 +1219,43 @@ export function PriestDashboard({
 
       {/* Tabs */}
       <div className="flex justify-center mb-2 overflow-x-auto pb-2 scrollbar-hide">
-        <div className="inline-flex bg-black rounded-full p-1 min-w-max md:w-full max-w-4xl items-center shadow-xl border border-white/5">
+        <div className="grid grid-cols-4 bg-black rounded-full p-1 min-w-max md:w-full max-w-4xl items-center shadow-xl border border-white/5">
           <button
             onClick={() => setAnalyticsView("descriptive")}
-            className={`flex-1 rounded-full text-[9px] md:text-[10px] font-black transition-all uppercase tracking-[0.2em] whitespace-nowrap ${
+            className={`w-full rounded-full text-[9px] md:text-[10px] font-black transition-all uppercase tracking-[0.2em] whitespace-nowrap ${
               analyticsView === "descriptive" 
-                ? "bg-white text-gold-600 py-3 md:py-4 px-4 md:px-8 shadow-lg -my-1.5 -mx-1.5 z-10 scale-[1.02]" 
-                : "bg-transparent text-gray-500 hover:text-gray-300 py-1.5 md:py-2 px-4 md:px-8"
+                ? "bg-white text-gold-600 py-3 md:py-4 px-4 md:px-8 shadow-lg" 
+                : "bg-transparent text-gray-500 hover:text-gray-300 py-3 md:py-4 px-4 md:px-8"
             }`}
           >
             Descriptive
           </button>
           <button
             onClick={() => setAnalyticsView("health")}
-            className={`flex-1 rounded-full text-[9px] md:text-[10px] font-black transition-all uppercase tracking-[0.2em] whitespace-nowrap ${
+            className={`w-full rounded-full text-[9px] md:text-[10px] font-black transition-all uppercase tracking-[0.2em] whitespace-nowrap ${
               analyticsView === "health" 
-                ? "bg-white text-gold-600 py-3 md:py-4 px-4 md:px-8 shadow-lg -my-1.5 -mx-1.5 z-10 scale-[1.02]" 
-                : "bg-transparent text-gray-500 hover:text-gray-300 py-1.5 md:py-2 px-4 md:px-8"
+                ? "bg-white text-gold-600 py-3 md:py-4 px-4 md:px-8 shadow-lg" 
+                : "bg-transparent text-gray-500 hover:text-gray-300 py-3 md:py-4 px-4 md:px-8"
             }`}
           >
             Diagnostic
           </button>
           <button
             onClick={() => setAnalyticsView("predictive")}
-            className={`flex-1 rounded-full text-[9px] md:text-[10px] font-black transition-all uppercase tracking-[0.2em] whitespace-nowrap ${
+            className={`w-full rounded-full text-[9px] md:text-[10px] font-black transition-all uppercase tracking-[0.2em] whitespace-nowrap ${
               analyticsView === "predictive" 
-                ? "bg-white text-gold-600 py-3 md:py-4 px-4 md:px-8 shadow-lg -my-1.5 -mx-1.5 z-10 scale-[1.02]" 
-                : "bg-transparent text-gray-500 hover:text-gray-300 py-1.5 md:py-2 px-4 md:px-8"
+                ? "bg-white text-gold-600 py-3 md:py-4 px-4 md:px-8 shadow-lg" 
+                : "bg-transparent text-gray-500 hover:text-gray-300 py-3 md:py-4 px-4 md:px-8"
             }`}
           >
             Predictive
           </button>
           <button
             onClick={() => setAnalyticsView("prescriptive")}
-            className={`flex-1 rounded-full text-[9px] md:text-[10px] font-black transition-all uppercase tracking-[0.2em] whitespace-nowrap ${
+            className={`w-full rounded-full text-[9px] md:text-[10px] font-black transition-all uppercase tracking-[0.2em] whitespace-nowrap ${
               analyticsView === "prescriptive" 
-                ? "bg-white text-gold-600 py-3 md:py-4 px-4 md:px-8 shadow-lg -my-1.5 -mx-1.5 z-10 scale-[1.02]" 
-                : "bg-transparent text-gray-500 hover:text-gray-300 py-1.5 md:py-2 px-4 md:px-8"
+                ? "bg-white text-gold-600 py-3 md:py-4 px-4 md:px-8 shadow-lg" 
+                : "bg-transparent text-gray-500 hover:text-gray-300 py-3 md:py-4 px-4 md:px-8"
             }`}
           >
             Prescriptive

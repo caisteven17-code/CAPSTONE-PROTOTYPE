@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { 
   ArrowLeft, 
   Plus, 
@@ -12,33 +12,86 @@ import {
   MapPin, 
   FileText, 
   History,
-  DollarSign,
   CheckCircle2,
-  Share2,
-  Download,
   User,
   ArrowUpRight,
-  Copy
+  Wallet
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { formatCurrency } from '../../lib/format';
-import { Project, Donation } from '../../types';
-import { AIInsightsPanel } from './AIInsightsPanel';
+import { FinancialRecord, Project, Donation, ProjectExpense } from '../../types';
+import { dataService } from '../../services/dataService';
 import { DonationEntryModal } from './DonationEntryModal';
+import { ExpenseEntryModal } from './ExpenseEntryModal';
 
 interface ProjectDetailPageProps {
   project: Project;
   donations: Donation[];
+  expenses: ProjectExpense[];
   onBack: () => void;
   onAddDonation: (donation: Omit<Donation, 'id'>) => void;
+  onAddExpense: (expense: Omit<ProjectExpense, 'id'>) => void;
   onCloneProject: (project: Project) => void;
   role?: string;
 }
 
-export function ProjectDetailPage({ project, donations, onBack, onAddDonation, onCloneProject, role }: ProjectDetailPageProps) {
+export function ProjectDetailPage({ project, donations, expenses, onBack, onAddDonation, onAddExpense, onCloneProject, role }: ProjectDetailPageProps) {
   const [isDonationModalOpen, setIsDonationModalOpen] = useState(false);
+  const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
+  const [historicalRecords, setHistoricalRecords] = useState<FinancialRecord[]>([]);
   const progress = (project.currentAmount / project.targetAmount) * 100;
-  const isParish = role === 'priest' || role === 'school' || role === 'seminary';
+  const canRecordProjectEntries = role === 'priest' || role === 'school' || role === 'seminary' || role === 'bishop' || role === 'admin';
+  const totalDisbursements = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const availableBalance = project.currentAmount - totalDisbursements;
+
+  useEffect(() => {
+    let active = true;
+
+    const loadRecords = async () => {
+      if (project.entityType === 'diocese') {
+        if (active) setHistoricalRecords([]);
+        return;
+      }
+
+      const records = await dataService.getRecords(project.entityId, project.entityType);
+      if (active) {
+        setHistoricalRecords(records);
+      }
+    };
+
+    loadRecords();
+
+    return () => {
+      active = false;
+    };
+  }, [project.entityId, project.entityType]);
+
+  const forecastSuccess = useMemo(() => {
+    if (project.targetAmount <= 0) return 0;
+
+    const now = new Date();
+    const deadline = new Date(project.endDate);
+    const monthsRemaining = Math.max(0, Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30)));
+
+    const recentRecords = historicalRecords.slice(-6);
+    const averageCollections = recentRecords.length > 0
+      ? recentRecords.reduce((sum, record) => sum + record.collections, 0) / recentRecords.length
+      : 0;
+
+    const donationMonths = new Set(donations.map((donation) => donation.date.slice(0, 7)));
+    const averageDonationRunRate = donationMonths.size > 0
+      ? project.currentAmount / donationMonths.size
+      : 0;
+
+    const baselineMonthlyCapacity = Math.max(averageDonationRunRate, averageCollections * 0.06);
+    const seasonalMonths = ['04', '05', '12'];
+    const deadlineMonth = String(deadline.getMonth() + 1).padStart(2, '0');
+    const seasonalAdjustment = seasonalMonths.includes(deadlineMonth) ? 1.08 : 1;
+    const projectedAdditional = baselineMonthlyCapacity * monthsRemaining * seasonalAdjustment;
+    const projectedTotal = project.currentAmount + projectedAdditional;
+
+    return Math.min(100, Math.round((projectedTotal / project.targetAmount) * 100));
+  }, [donations, historicalRecords, project.currentAmount, project.endDate, project.targetAmount]);
 
   const getStatusColor = (status: Project['status']) => {
     switch (status) {
@@ -93,41 +146,12 @@ export function ProjectDetailPage({ project, donations, onBack, onAddDonation, o
               {project.description}
             </p>
 
-            <div className="flex flex-wrap items-center gap-4 pt-6">
-              <motion.button 
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setIsDonationModalOpen(true)}
-                className="w-full sm:w-auto px-8 py-4 bg-gold-500 text-church-green-dark rounded-2xl font-bold hover:bg-gold-600 transition-all shadow-xl shadow-gold-500/20 flex items-center justify-center gap-3"
-              >
-                <DollarSign className="w-5 h-5" />
-                CONTRIBUTE NOW
-              </motion.button>
-              <div className="flex items-center gap-2 w-full sm:w-auto justify-center sm:justify-start">
-                <button className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-white/20 transition-all">
-                  <Share2 className="w-5 h-5" />
-                </button>
-                <button className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-white/20 transition-all">
-                  <Download className="w-5 h-5" />
-                </button>
-                <button 
-                  onClick={() => onCloneProject(project)}
-                  className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-white/20 transition-all group/clone relative"
-                  title="Clone Project"
-                >
-                  <Copy className="w-5 h-5" />
-                  <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 px-2 py-1 bg-church-black text-[10px] text-white rounded opacity-0 group-hover/clone:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                    Clone Project
-                  </span>
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-6 sm:gap-12 pt-8 border-t border-white/10">
+            <div className="grid grid-cols-2 lg:grid-cols-4 items-center gap-6 sm:gap-12 pt-8 border-t border-white/10">
               {[
                 { label: 'Target Goal', value: formatCurrency(project.targetAmount), color: 'text-white' },
                 { label: 'Raised to Date', value: formatCurrency(project.currentAmount), color: 'text-gold-500' },
-                { label: 'Donors', value: donations.length.toString(), color: 'text-white' }
+                { label: 'Donors', value: donations.length.toString(), color: 'text-white' },
+                { label: 'Success Forecast', value: `${forecastSuccess}%`, color: 'text-white' }
               ].map((stat, i) => (
                 <motion.div 
                   key={i}
@@ -146,9 +170,9 @@ export function ProjectDetailPage({ project, donations, onBack, onAddDonation, o
       </div>
 
       <div className="max-w-7xl mx-auto px-6 md:px-16 py-8 md:py-12 relative z-20">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-12">
+        <div className="space-y-8 md:space-y-12">
           {/* Main Content Column */}
-          <div className="lg:col-span-2 space-y-8 md:space-y-12">
+          <div className="space-y-8 md:space-y-12">
             {/* Progress Card */}
             <motion.div 
               initial={{ opacity: 0, scale: 0.98 }}
@@ -161,8 +185,8 @@ export function ProjectDetailPage({ project, donations, onBack, onAddDonation, o
 
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end mb-8 relative z-10 gap-4 sm:gap-0">
                 <div className="space-y-1.5">
-                  <h3 className="text-xl md:text-2xl font-serif font-bold text-church-black">Fundraising Progress</h3>
-                  <p className="text-xs md:text-sm text-gray-400 font-medium">Real-time contribution tracking and goal alignment</p>
+                  <h3 className="text-xl md:text-2xl font-serif font-bold text-church-black">Project Funding Record</h3>
+                  <p className="text-xs md:text-sm text-gray-400 font-medium">Recorded receipts against the approved project target.</p>
                 </div>
                 <div className="text-left sm:text-right">
                   <span className="text-4xl md:text-5xl font-serif font-bold text-gold-600 leading-none">{Math.round(progress)}%</span>
@@ -204,6 +228,23 @@ export function ProjectDetailPage({ project, donations, onBack, onAddDonation, o
                   </div>
                   <span className="text-[9px] md:text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em] block mb-2">Beneficiaries</span>
                   <p className="text-sm font-bold text-church-black leading-tight flex-1">{project.beneficiaries || 'Parish Community'}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8 relative z-10">
+                <div className="rounded-3xl border border-gray-100 bg-gray-50/50 p-6">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">Recorded Donations</p>
+                  <p className="mt-3 text-2xl font-serif font-bold text-church-black">{formatCurrency(project.currentAmount)}</p>
+                </div>
+                <div className="rounded-3xl border border-gray-100 bg-gray-50/50 p-6">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">Recorded Disbursements</p>
+                  <p className="mt-3 text-2xl font-serif font-bold text-church-black">{formatCurrency(totalDisbursements)}</p>
+                </div>
+                <div className="rounded-3xl border border-gray-100 bg-gray-50/50 p-6">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">Available Balance</p>
+                  <p className={`mt-3 text-2xl font-serif font-bold ${availableBalance < 0 ? 'text-rose-600' : 'text-church-green-dark'}`}>
+                    {formatCurrency(availableBalance)}
+                  </p>
                 </div>
               </div>
             </motion.div>
@@ -267,7 +308,7 @@ export function ProjectDetailPage({ project, donations, onBack, onAddDonation, o
                   <h3 className="text-2xl md:text-3xl font-serif font-bold text-church-black tracking-tight">Recent Contributions</h3>
                   <p className="text-xs md:text-sm text-gray-400 font-medium">Real-time audit log of all project support and donations</p>
                 </div>
-                {isParish && (
+                {canRecordProjectEntries && (
                   <motion.button 
                     whileHover={{ scale: 1.02, x: 5 }}
                     whileTap={{ scale: 0.98 }}
@@ -294,7 +335,7 @@ export function ProjectDetailPage({ project, donations, onBack, onAddDonation, o
                     <tbody className="divide-y divide-gray-50">
                       <AnimatePresence mode="popLayout">
                         {donations.length > 0 ? (
-                          donations.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((donation, idx) => (
+                          [...donations].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((donation, idx) => (
                             <motion.tr 
                               key={donation.id}
                               initial={{ opacity: 0, y: 10 }}
@@ -309,11 +350,11 @@ export function ProjectDetailPage({ project, donations, onBack, onAddDonation, o
                                   </div>
                                   <div className="space-y-0.5">
                                     <span className="text-sm font-bold text-church-black block tracking-tight">{donation.donorName}</span>
-                                    {donation.receiptIssued && (
+                                    {donation.receiptProofName && (
                                       <div className="flex items-center gap-1.5">
                                         <div className="w-1.5 h-1.5 rounded-full bg-gold-500 animate-pulse" />
                                         <span className="text-[9px] font-bold text-gold-600 uppercase tracking-widest">
-                                          Official Receipt Issued
+                                          Proof: {donation.receiptProofName}
                                         </span>
                                       </div>
                                     )}
@@ -355,7 +396,96 @@ export function ProjectDetailPage({ project, donations, onBack, onAddDonation, o
                                 </div>
                                 <div className="space-y-1">
                                   <p className="text-lg md:text-xl font-serif font-bold text-church-black">No contributions recorded</p>
-                                  <p className="text-xs md:text-sm text-gray-400 max-w-xs mx-auto">Be the first to record a donation for this mission-critical project.</p>
+                                  <p className="text-xs md:text-sm text-gray-400 max-w-xs mx-auto">Be the first to record a receipt for this project.</p>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </AnimatePresence>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-6 md:space-y-8">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+                <div className="space-y-1.5">
+                  <h3 className="text-2xl md:text-3xl font-serif font-bold text-church-black tracking-tight">Recorded Disbursements</h3>
+                  <p className="text-xs md:text-sm text-gray-400 font-medium">Expense and payout log for this project.</p>
+                </div>
+                {canRecordProjectEntries && (
+                  <motion.button
+                    whileHover={{ scale: 1.02, x: 5 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => setIsExpenseModalOpen(true)}
+                    className="w-full sm:w-auto flex items-center justify-center gap-3 px-8 py-4 bg-church-black text-white rounded-2xl text-[10px] font-bold tracking-[0.2em] hover:bg-church-green-dark transition-all shadow-xl shadow-church-black/20"
+                  >
+                    <Wallet className="w-4 h-4" />
+                    RECORD DISBURSEMENT
+                  </motion.button>
+                )}
+              </div>
+
+              <div className="bg-white rounded-[24px] md:rounded-[40px] border border-gray-100 overflow-hidden shadow-sm hover:shadow-xl hover:shadow-church-black/5 transition-all duration-500">
+                <div className="overflow-x-auto custom-scrollbar">
+                  <table className="w-full text-left border-collapse min-w-[800px]">
+                    <thead>
+                      <tr className="border-b border-gray-100 bg-gray-50/50">
+                        <th className="px-6 md:px-10 py-6 text-[10px] font-serif italic font-bold text-gray-400 uppercase tracking-[0.2em]">Description</th>
+                        <th className="px-6 md:px-10 py-6 text-[10px] font-serif italic font-bold text-gray-400 uppercase tracking-[0.2em]">Amount</th>
+                        <th className="px-6 md:px-10 py-6 text-[10px] font-serif italic font-bold text-gray-400 uppercase tracking-[0.2em]">Date Paid</th>
+                        <th className="px-6 md:px-10 py-6 text-[10px] font-serif italic font-bold text-gray-400 uppercase tracking-[0.2em]">Method</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      <AnimatePresence mode="popLayout">
+                        {expenses.length > 0 ? (
+                          [...expenses].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((expense, idx) => (
+                            <motion.tr
+                              key={expense.id}
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: idx * 0.05 }}
+                              className="hover:bg-gray-50/70 transition-all group cursor-default"
+                            >
+                              <td className="px-6 md:px-10 py-7">
+                                <div className="space-y-1">
+                                  <span className="text-sm font-bold text-church-black block tracking-tight">{expense.description}</span>
+                                  {expense.receiptReference && (
+                                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Ref: {expense.receiptReference}</span>
+                                  )}
+                                  {expense.proofFileName && (
+                                    <span className="text-[9px] font-bold text-gold-600 uppercase tracking-widest block">Proof: {expense.proofFileName}</span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-6 md:px-10 py-7">
+                                <span className="text-base md:text-lg font-serif font-bold text-rose-600 tracking-tight">{formatCurrency(expense.amount)}</span>
+                              </td>
+                              <td className="px-6 md:px-10 py-7">
+                                <span className="text-sm text-church-black font-bold tracking-tight">
+                                  {new Date(expense.date).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}
+                                </span>
+                              </td>
+                              <td className="px-6 md:px-10 py-7">
+                                <span className="px-4 py-2 rounded-xl bg-gray-100 text-gray-600 text-[10px] font-bold uppercase tracking-widest shadow-sm">
+                                  {expense.paymentMethod}
+                                </span>
+                              </td>
+                            </motion.tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={4} className="px-6 md:px-10 py-20 md:py-24 text-center">
+                              <div className="flex flex-col items-center gap-6">
+                                <div className="w-20 h-20 md:w-24 md:h-24 bg-gray-50 rounded-[24px] md:rounded-[32px] flex items-center justify-center text-gray-200 border border-dashed border-gray-200">
+                                  <Wallet className="w-8 h-8 md:w-10 md:h-10" />
+                                </div>
+                                <div className="space-y-1">
+                                  <p className="text-lg md:text-xl font-serif font-bold text-church-black">No disbursements recorded</p>
+                                  <p className="text-xs md:text-sm text-gray-400 max-w-xs mx-auto">Record the first project expense or payout here.</p>
                                 </div>
                               </div>
                             </td>
@@ -369,10 +499,6 @@ export function ProjectDetailPage({ project, donations, onBack, onAddDonation, o
             </div>
           </div>
 
-          {/* Sidebar Column */}
-          <div className="space-y-8 lg:pt-12">
-            <AIInsightsPanel project={project} role={role} />
-          </div>
         </div>
       </div>
 
@@ -381,6 +507,13 @@ export function ProjectDetailPage({ project, donations, onBack, onAddDonation, o
         isOpen={isDonationModalOpen}
         onClose={() => setIsDonationModalOpen(false)}
         onSubmit={onAddDonation}
+        projectId={project.id}
+        projectName={project.name}
+      />
+      <ExpenseEntryModal
+        isOpen={isExpenseModalOpen}
+        onClose={() => setIsExpenseModalOpen(false)}
+        onSubmit={onAddExpense}
         projectId={project.id}
         projectName={project.name}
       />

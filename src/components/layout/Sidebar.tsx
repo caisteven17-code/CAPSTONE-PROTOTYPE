@@ -45,10 +45,12 @@ export function Sidebar({
 }: SidebarProps) {
   const [showTimeframeDropdown, setShowTimeframeDropdown] = React.useState(false);
   const [showParishDropdown, setShowParishDropdown] = React.useState(activeTab.startsWith('parish'));
+  const [showPriestDropdown, setShowPriestDropdown] = React.useState(activeTab.startsWith('priest'));
 
-  // Auto-expand dropdown when parish or priest tab is active
+  // Auto-expand dropdowns for their active sections
   React.useEffect(() => {
-    setShowParishDropdown(activeTab.startsWith('parish') || activeTab.startsWith('priest'));
+    setShowParishDropdown(activeTab.startsWith('parish'));
+    setShowPriestDropdown(activeTab.startsWith('priest'));
   }, [activeTab]);
 
   /**
@@ -61,10 +63,13 @@ export function Sidebar({
 
   const parishSubtabs = [
     { id: 'parish-dashboard', label: 'Dashboard', icon: BarChart3, section: 'PARISH' },
-    { id: 'parish-aitwin', label: 'AI Twin', icon: Zap, section: 'PARISH' },
-    { id: 'priest-dashboard', label: 'Dashboard', icon: BarChart3, section: 'PRIEST' },
+    { id: 'parish-aitwin', label: 'Simulation', icon: Zap, section: 'PARISH' },
+  ];
+
+  const priestSubtabs = [
+    { id: 'priest-dashboard', label: 'Dashboard', icon: BarChart3 },
     { id: 'priest-health', label: 'Health Tracker', icon: Heart, section: 'PRIEST' },
-    { id: 'priest-aitwin', label: 'AI Twin', icon: Zap, section: 'PRIEST' },
+    { id: 'priest-aitwin', label: 'Simulation', icon: Zap, section: 'PRIEST' },
   ];
 
   const navItems = [
@@ -132,7 +137,7 @@ export function Sidebar({
         {/* Parishes Dropdown */}
         <div>
           <div className={`w-full flex items-center gap-3 rounded-xl transition-all duration-300 ${
-            activeTab.startsWith('parish') || activeTab.startsWith('priest')
+            activeTab.startsWith('parish')
               ? 'bg-white/10 text-gold-400 shadow-sm'
               : 'text-white/50'
           }`}>
@@ -144,7 +149,7 @@ export function Sidebar({
               }}
               className="flex-1 flex items-center gap-3 px-4 py-3 hover:text-white transition-colors group"
             >
-              <Church className={`w-4 h-4 transition-colors ${(activeTab.startsWith('parish') || activeTab.startsWith('priest')) ? 'text-gold-400' : 'text-white/20 group-hover:text-white/40'}`} />
+              <Church className={`w-4 h-4 transition-colors ${activeTab.startsWith('parish') ? 'text-gold-400' : 'text-white/20 group-hover:text-white/40'}`} />
               <span className="text-xs font-bold tracking-wide">Parishes</span>
             </button>
 
@@ -156,7 +161,7 @@ export function Sidebar({
               <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${showParishDropdown ? 'rotate-180' : ''}`} />
             </button>
 
-            {(activeTab.startsWith('parish') || activeTab.startsWith('priest')) && (
+            {activeTab.startsWith('parish') && (
               <div className="absolute right-3 w-1.5 h-1.5 bg-gold-400 rounded-full shadow-[0_0_8px_rgba(212,175,55,0.6)]" />
             )}
           </div>
@@ -171,67 +176,95 @@ export function Sidebar({
                 transition={{ duration: 0.2 }}
                 className="space-y-0 mt-1 pl-6"
               >
-                {/* PARISH SECTION */}
                 <div className="py-1">
-                  <div className="px-4 py-1.5 text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">
-                    Parish
-                  </div>
-                  {parishSubtabs
-                    .filter(sub => sub.section === 'PARISH')
-                    .map((subtab) => {
-                      const SubIcon = subtab.icon;
-                      const isActive = activeTab === subtab.id;
-                      return (
-                        <button
-                          key={subtab.id}
-                          onClick={() => onNavigate(subtab.id)}
-                          className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-all duration-300 group text-sm ${
-                            isActive
-                              ? 'bg-white/10 text-gold-400'
-                              : 'text-white/40 hover:bg-white/5 hover:text-white/60'
-                          }`}
-                        >
-                          <SubIcon className={`w-3.5 h-3.5 ${isActive ? 'text-gold-400' : 'text-white/20'}`} />
-                          <span className="font-medium tracking-wide">{subtab.label}</span>
-                          {isActive && (
-                            <div className="ml-auto w-1 h-1 bg-gold-400 rounded-full" />
-                          )}
-                        </button>
-                      );
-                    })}
+                  {parishSubtabs.map((subtab) => {
+                    const SubIcon = subtab.icon;
+                    const isActive = activeTab === subtab.id;
+                    return (
+                      <button
+                        key={subtab.id}
+                        onClick={() => onNavigate(subtab.id)}
+                        className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-all duration-300 group text-sm ${
+                          isActive
+                            ? 'bg-white/10 text-gold-400'
+                            : 'text-white/40 hover:bg-white/5 hover:text-white/60'
+                        }`}
+                      >
+                        <SubIcon className={`w-3.5 h-3.5 ${isActive ? 'text-gold-400' : 'text-white/20'}`} />
+                        <span className="font-medium tracking-wide">{subtab.label}</span>
+                        {isActive && (
+                          <div className="ml-auto w-1 h-1 bg-gold-400 rounded-full" />
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
 
-                {/* SEPARATOR */}
-                <div className="my-1 border-t border-white/10" />
+        {/* Priest Dropdown */}
+        <div>
+          <div className={`w-full flex items-center gap-3 rounded-xl transition-all duration-300 ${
+            activeTab.startsWith('priest')
+              ? 'bg-white/10 text-gold-400 shadow-sm'
+              : 'text-white/50'
+          }`}>
+            <button
+              onClick={() => {
+                onNavigate('priest-dashboard');
+                setShowPriestDropdown(false);
+              }}
+              className="flex-1 flex items-center gap-3 px-4 py-3 hover:text-white transition-colors group"
+            >
+              <User className={`w-4 h-4 transition-colors ${activeTab.startsWith('priest') ? 'text-gold-400' : 'text-white/20 group-hover:text-white/40'}`} />
+              <span className="text-xs font-bold tracking-wide">Priest</span>
+            </button>
 
-                {/* PRIEST SECTION */}
+            <button
+              onClick={() => setShowPriestDropdown(!showPriestDropdown)}
+              className="px-3 py-3 hover:bg-white/10 rounded-r-xl transition-colors"
+            >
+              <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${showPriestDropdown ? 'rotate-180' : ''}`} />
+            </button>
+
+            {activeTab.startsWith('priest') && (
+              <div className="absolute right-3 w-1.5 h-1.5 bg-gold-400 rounded-full shadow-[0_0_8px_rgba(212,175,55,0.6)]" />
+            )}
+          </div>
+
+          <AnimatePresence>
+            {showPriestDropdown && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+                className="space-y-0 mt-1 pl-6"
+              >
                 <div className="py-1">
-                  <div className="px-4 py-1.5 text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">
-                    Priest
-                  </div>
-                  {parishSubtabs
-                    .filter(sub => sub.section === 'PRIEST')
-                    .map((subtab) => {
-                      const SubIcon = subtab.icon;
-                      const isActive = activeTab === subtab.id;
-                      return (
-                        <button
-                          key={subtab.id}
-                          onClick={() => onNavigate(subtab.id)}
-                          className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-all duration-300 group text-sm ${
-                            isActive
-                              ? 'bg-white/10 text-gold-400'
-                              : 'text-white/40 hover:bg-white/5 hover:text-white/60'
-                          }`}
-                        >
-                          <SubIcon className={`w-3.5 h-3.5 ${isActive ? 'text-gold-400' : 'text-white/20'}`} />
-                          <span className="font-medium tracking-wide">{subtab.label}</span>
-                          {isActive && (
-                            <div className="ml-auto w-1 h-1 bg-gold-400 rounded-full" />
-                          )}
-                        </button>
-                      );
-                    })}
+                  {priestSubtabs.map((subtab) => {
+                    const SubIcon = subtab.icon;
+                    const isActive = activeTab === subtab.id;
+                    return (
+                      <button
+                        key={subtab.id}
+                        onClick={() => onNavigate(subtab.id)}
+                        className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-all duration-300 group text-sm ${
+                          isActive
+                            ? 'bg-white/10 text-gold-400'
+                            : 'text-white/40 hover:bg-white/5 hover:text-white/60'
+                        }`}
+                      >
+                        <SubIcon className={`w-3.5 h-3.5 ${isActive ? 'text-gold-400' : 'text-white/20'}`} />
+                        <span className="font-medium tracking-wide">{subtab.label}</span>
+                        {isActive && (
+                          <div className="ml-auto w-1 h-1 bg-gold-400 rounded-full" />
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               </motion.div>
             )}

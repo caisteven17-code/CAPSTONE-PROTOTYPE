@@ -141,13 +141,13 @@ export default function App() {
         case 'parish-health':
           return <BishopDashboard initialEntityType="Parishes" timeframe={timeframe} year={year} onYearChange={setYear} />;
         case 'parish-aitwin':
-          return <AITwin />;
+          return <AITwin mode="parish" />;
         case 'priest-dashboard':
           return <PriestDashboard role="priest" timeframe={timeframe} year={year} onYearChange={setYear} onNavigate={setActiveTab} onLogout={handleLogout} />;
         case 'priest-health':
           return <HealthTracker />;
         case 'priest-aitwin':
-          return <AITwin />;
+          return <AITwin mode="priest" />;
         case 'seminaries':
           return <BishopDashboard initialEntityType="Seminaries" timeframe={timeframe} year={year} onYearChange={setYear} />;
         case 'school':
@@ -171,13 +171,13 @@ export default function App() {
         case 'parish-health':
           return <PriestDashboard role={role} timeframe={timeframe} year={year} onYearChange={setYear} onNavigate={setActiveTab} onLogout={handleLogout} />;
         case 'parish-aitwin':
-          return <AITwin />;
+          return <AITwin mode="parish" />;
         case 'priest-dashboard':
           return <PriestDashboard role={role} timeframe={timeframe} year={year} onYearChange={setYear} onNavigate={setActiveTab} onLogout={handleLogout} />;
         case 'priest-health':
           return <HealthTracker />;
         case 'priest-aitwin':
-          return <AITwin />;
+          return <AITwin mode="priest" />;
         case 'seminaries':
           return <PriestDashboard role="seminary" timeframe={timeframe} year={year} onYearChange={setYear} onNavigate={setActiveTab} onLogout={handleLogout} />;
         case 'school':
