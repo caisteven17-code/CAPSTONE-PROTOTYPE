@@ -1159,7 +1159,7 @@ export function BishopDashboard({
         </div>
       </div>
 
-      {entityFilter !== 'All Entities' ? (
+      {entityFilter !== 'All Entities' && entityType !== 'Parishes' ? (
         <PriestDashboard 
           isEmbedded={true} 
           role={entityType === 'Parishes' ? 'priest' : entityType === 'Seminaries' ? 'seminary' : 'school'}

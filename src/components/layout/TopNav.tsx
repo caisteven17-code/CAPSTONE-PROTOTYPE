@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import React, { useState } from 'react';
-import { Calendar, ChevronDown, Church, Check, User, Download } from 'lucide-react';
+import { Calendar, ChevronDown, Church, Check, User } from 'lucide-react';
 
 import { Role, Timeframe } from '../../App';
 
@@ -13,7 +13,6 @@ interface TopNavProps {
   onTimeframeChange?: (timeframe: Timeframe) => void;
   year?: number;
   onYearChange?: (year: number) => void;
-  onGenerateReport?: () => void;
 }
 
 export function TopNav({ 
@@ -23,8 +22,7 @@ export function TopNav({
   timeframe = '6m', 
   onTimeframeChange,
   year = 2026,
-  onYearChange,
-  onGenerateReport
+  onYearChange
 }: TopNavProps) {
   const [showTimeframeDropdown, setShowTimeframeDropdown] = useState(false);
   const [isYearOpen, setIsYearOpen] = useState(false);
@@ -202,17 +200,6 @@ export function TopNav({
               )}
             </div>
 
-            {(currentPage === 'priest-dashboard' || currentPage === 'parish-dashboard') && (
-              <button
-                type="button"
-                onClick={onGenerateReport}
-                className="flex items-center gap-2 bg-gold-500 text-black px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-[0.15em] hover:bg-gold-600 transition-colors border border-gold-600"
-              >
-                <Download className="w-4 h-4" />
-                Generate Report
-              </button>
-            )}
-            
             <button 
               onClick={() => onNavigate?.('settings')}
               className="w-10 h-10 bg-gold-500 text-black rounded-full flex items-center justify-center hover:bg-gold-600 transition-colors cursor-pointer shadow-lg shadow-gold-500/20 border border-gold-600 shrink-0"

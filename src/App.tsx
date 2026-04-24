@@ -21,7 +21,6 @@ import { auth, AuthUser } from './firebase';
 
 export type Role = 'bishop' | 'admin' | 'priest' | 'school' | 'seminary';
 export type Timeframe = '6m' | '1y' | 'all';
-const GENERATE_COMPARISON_REPORT_EVENT = 'generate-comparison-report';
 
 /**
  * Helper function to check if role has diocese-wide access
@@ -223,9 +222,6 @@ export default function App() {
               onTimeframeChange={setTimeframe}
               year={year}
               onYearChange={setYear}
-              onGenerateReport={() => {
-                window.dispatchEvent(new Event(GENERATE_COMPARISON_REPORT_EVENT));
-              }}
             />
           )}
           <main className={`flex-1 overflow-y-auto pb-20 md:pb-0 ${isDioceseAccess ? '' : 'pt-0'}`}>

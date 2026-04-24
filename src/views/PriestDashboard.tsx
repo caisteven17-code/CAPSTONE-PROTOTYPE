@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { TrendingUp, AlertTriangle, ArrowUpDown, Search, BrainCircuit, HeartPulse, Info, X, TrendingDown, Filter, Download, ChevronRight, ArrowUpRight, ArrowDownRight, Menu, Settings, Bell, User, LogOut, HelpCircle, FileText, Activity, Target, Zap, Clock, CalendarDays, Sparkles, ArrowRight, ArrowUp, Cpu, Award } from 'lucide-react';
+import { TrendingUp, AlertTriangle, ArrowUpDown, Search, BrainCircuit, HeartPulse, Info, X, TrendingDown, Filter, ChevronRight, ArrowUpRight, ArrowDownRight, Menu, Settings, Bell, User, LogOut, HelpCircle, FileText, Activity, Target, Zap, Clock, CalendarDays, Sparkles, ArrowRight, ArrowUp, Cpu, Award } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer,
   Line, LineChart, AreaChart, Area, ComposedChart, PieChart, Pie, Cell, Tooltip, Legend,
@@ -39,8 +39,6 @@ const stripVicariatePrefix = (name: string) => name.replace('Vicariate of ', '')
 
 const COMPARISON_MONTH_OPTIONS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
 const COMPARISON_YEAR_OPTIONS = ['2024', '2025', '2026'] as const;
-const GENERATE_COMPARISON_REPORT_EVENT = 'generate-comparison-report';
-
 interface ComparisonRecord {
   period: string;
   collections: number;
@@ -625,48 +623,6 @@ export function PriestDashboard({
     return { amount, percent };
   }, [comparisonData]);
 
-  const handleGenerateComparisonReport = useCallback(() => {
-    if (comparisonData.length !== 2) return;
-
-    const [periodOne, periodTwo] = comparisonData;
-
-    const reportLines = [
-      'STEWARDSHIP COMPARISON REPORT',
-      `Generated: ${new Date().toLocaleString()}`,
-      '',
-      `Period 1: ${periodOne.period}`,
-      `  Collections: ${formatCurrency(periodOne.collections)}`,
-      `  Budget: ${formatCurrency(periodOne.budget)}`,
-      `  Variance: ${formatCurrency(periodOne.variance)} (${periodOne.variancePercent.toFixed(1)}%)`,
-      '',
-      `Period 2: ${periodTwo.period}`,
-      `  Collections: ${formatCurrency(periodTwo.collections)}`,
-      `  Budget: ${formatCurrency(periodTwo.budget)}`,
-      `  Variance: ${formatCurrency(periodTwo.variance)} (${periodTwo.variancePercent.toFixed(1)}%)`,
-      '',
-      `Comparison: ${comparisonDelta.amount >= 0 ? '+' : ''}${formatCurrency(comparisonDelta.amount)} (${comparisonDelta.percent.toFixed(1)}%)`,
-    ];
-
-    const blob = new Blob([reportLines.join('\n')], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `stewardship-comparison-${comparisonMonth1}-${comparisonYear1}-vs-${comparisonMonth2}-${comparisonYear2}.txt`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  }, [comparisonData, comparisonDelta, comparisonMonth1, comparisonMonth2, comparisonYear1, comparisonYear2]);
-
-  useEffect(() => {
-    const handleGlobalGenerateReport = () => handleGenerateComparisonReport();
-
-    window.addEventListener(GENERATE_COMPARISON_REPORT_EVENT, handleGlobalGenerateReport);
-    return () => {
-      window.removeEventListener(GENERATE_COMPARISON_REPORT_EVENT, handleGlobalGenerateReport);
-    };
-  }, [handleGenerateComparisonReport]);
-
   const clusteringData = useMemo(() => [
     { week: 'Week 1', value: 85, status: 'high' },
     { week: 'Week 2', value: 65, status: 'medium' },
@@ -864,25 +820,8 @@ export function PriestDashboard({
               </div>
             </div>
 
-            {role === 'priest' && (
-              <div className="relative mx-auto hidden h-full w-full max-w-[220px] md:flex items-end justify-center">
-                <div className="absolute inset-x-6 bottom-0 h-24 rounded-[2rem] bg-gradient-to-t from-black/10 to-transparent blur-2xl"></div>
-                <div className="relative flex h-[240px] w-[180px] items-end justify-center">
-                  <div className="absolute bottom-0 h-[190px] w-[132px] rounded-t-[4rem] rounded-b-[2.4rem] bg-gradient-to-b from-black via-[#161616] to-[#050505] shadow-[0_24px_40px_rgba(0,0,0,0.25)]"></div>
-                  <div className="absolute bottom-[126px] h-7 w-10 rounded-b-2xl bg-white shadow-sm"></div>
-                  <div className="absolute bottom-[112px] h-12 w-16 rounded-t-[1rem] bg-[#0f0f0f]"></div>
-                  <div className="absolute bottom-[176px] h-16 w-16 rounded-full bg-[#f3d8bc] shadow-md"></div>
-                  <div className="absolute bottom-[206px] h-9 w-[74px] rounded-t-full rounded-b-[1.6rem] bg-[#151515]"></div>
-                  <div className="absolute bottom-[104px] flex w-full justify-center">
-                    <div className="rounded-full border border-gold-200 bg-white/95 px-3 py-1 text-[9px] font-black uppercase tracking-[0.25em] text-gold-600 shadow-lg">
-                      Parish Priest
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </FadeIn>
+            </div>
+          </FadeIn>
         
         {/* Submission Tracking / Entity Profile */}
         <FadeIn 
