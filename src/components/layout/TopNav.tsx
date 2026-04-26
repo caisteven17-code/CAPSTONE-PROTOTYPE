@@ -1,12 +1,13 @@
 ﻿'use client';
 
 import React, { useState } from 'react';
-import { Calendar, ChevronDown, Church, Check, User } from 'lucide-react';
+import { BarChart3, Bell, Calendar, ChevronDown, Church, Check, User } from 'lucide-react';
 
 import { Role, Timeframe } from '../../App';
 
 interface TopNavProps {
   onNavigate?: (page: string) => void;
+  onAccountSettings?: () => void;
   role?: Role;
   currentPage?: string;
   timeframe?: Timeframe;
@@ -17,6 +18,7 @@ interface TopNavProps {
 
 export function TopNav({ 
   onNavigate, 
+  onAccountSettings,
   role = 'bishop', 
   currentPage = 'home', 
   timeframe = '6m', 
@@ -38,15 +40,20 @@ export function TopNav({
     setShowTimeframeDropdown(false);
   };
 
-  if (role === 'priest' || role === 'school' || role === 'seminary') {
+  if (role === 'parish_priest' || role === 'parish_secretary' || role === 'school' || role === 'seminary') {
     const entityLabel = role === 'school' ? 'School' : role === 'seminary' ? 'Seminary' : 'Parish';
     const entityName = role === 'school' ? 'SAN PABLO DIOCESAN CATHOLIC SCHOOL' : role === 'seminary' ? 'ST. PETER\'S COLLEGE SEMINARY' : 'SAN ISIDRO LABRADOR PARISH';
-    const leaderTitle = role === 'school' ? 'School Director' : role === 'seminary' ? 'Rector' : 'Parish Priest';
-    const leaderName = role === 'school' ? 'Rev. Fr. John Doe' : role === 'seminary' ? 'Rev. Fr. James Smith' : 'Rev. Fr. Noel Artillaga';
+    const leaderTitle = role === 'school' ? 'School Director' : role === 'seminary' ? 'Rector' : role === 'parish_secretary' ? 'Parish Secretary' : 'Parish Priest';
+    const leaderName = role === 'school' ? 'Rev. Fr. John Doe' : role === 'seminary' ? 'Rev. Fr. James Smith' : 'Ms. Maria Santos';
+    const parishTabs = [
+      { id: 'parish-dashboard', label: 'Parish Dashboard', icon: BarChart3 },
+      ...(role === 'parish_priest' ? [{ id: 'priest-dashboard', label: 'Priest Dashboard', icon: User }] : []),
+      { id: 'announcements', label: 'Announcements', icon: Bell },
+    ];
 
     return (
       <header className="bg-black text-white border-b border-gray-800 sticky top-0 z-50 h-auto md:h-20 flex items-center w-full py-3 md:py-0">
-        <div className="flex items-center justify-between w-full px-3 sm:px-4 md:px-8">
+        <div className="flex items-center justify-between w-full px-3 sm:px-4 md:px-8 gap-4">
           {/* Logo & Title */}
           <div className="flex items-center gap-2 md:gap-4 overflow-hidden flex-1 min-w-0">
             <div className="w-8 md:w-12 h-8 md:h-12 border border-[#D4AF37] rounded-lg flex items-center justify-center text-[#D4AF37] shadow-md shrink-0">
@@ -58,6 +65,30 @@ export function TopNav({
               <p className="text-[8px] md:text-xs text-white/40 truncate">{leaderTitle}: {leaderName}</p>
             </div>
           </div>
+
+          {(role === 'parish_priest' || role === 'parish_secretary') && (
+            <nav className="hidden lg:flex items-center gap-3 shrink-0">
+              {parishTabs.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = currentPage === tab.id;
+
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => onNavigate?.(tab.id)}
+                    className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-colors ${
+                      isActive
+                        ? 'bg-gold-500 text-black'
+                        : 'bg-white/5 text-white/65 border border-white/10 hover:bg-white/10 hover:text-white'
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </nav>
+          )}
 
           {/* Actions */}
           <div className="flex items-center gap-2 md:gap-4">
@@ -120,9 +151,10 @@ export function TopNav({
               )}
             </div>
             
-            <button 
-              onClick={() => onNavigate?.('settings')}
+            <button
+              onClick={() => onAccountSettings?.()}
               className="w-8 h-8 md:w-10 md:h-10 bg-gold-500 rounded-full flex items-center justify-center hover:bg-gold-600 transition-colors cursor-pointer shadow-md border border-gold-600 shrink-0"
+              aria-label="Open account settings"
             >
               <span className="text-black font-black text-xs md:text-sm">P</span>
             </button>
@@ -200,9 +232,10 @@ export function TopNav({
               )}
             </div>
 
-            <button 
-              onClick={() => onNavigate?.('settings')}
+            <button
+              onClick={() => onAccountSettings?.()}
               className="w-10 h-10 bg-gold-500 text-black rounded-full flex items-center justify-center hover:bg-gold-600 transition-colors cursor-pointer shadow-lg shadow-gold-500/20 border border-gold-600 shrink-0"
+              aria-label="Open account settings"
             >
               <User className="w-5 h-5" />
             </button>

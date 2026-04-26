@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { TrendingUp, AlertTriangle, ArrowUpDown, Search, BrainCircuit, HeartPulse, Info, X, TrendingDown, Filter, ChevronRight, ArrowUpRight, ArrowDownRight, Menu, Settings, Bell, User, LogOut, HelpCircle, FileText, Activity, Target, Zap, Clock, CalendarDays, Sparkles, ArrowRight, ArrowUp, Cpu, Award } from 'lucide-react';
+import { TrendingUp, AlertTriangle, ArrowUpDown, Search, BrainCircuit, HeartPulse, Info, X, TrendingDown, Filter, ChevronRight, ChevronDown, ArrowUpRight, ArrowDownRight, Menu, Settings, Bell, User, LogOut, HelpCircle, FileText, Activity, Target, Zap, Clock, CalendarDays, Sparkles, ArrowRight, ArrowUp, Cpu, Award } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer,
   Line, LineChart, AreaChart, Area, ComposedChart, PieChart, Pie, Cell, Tooltip, Legend,
@@ -14,13 +14,14 @@ import { FinancialHealthGauge } from '../components/ui/FinancialHealthGauge';
 import { HealthDimensionBar } from '../components/ui/HealthDimensionBar';
 import { DiagnosticCard } from '../components/ui/DiagnosticCard';
 import { StewardChatbot } from '../components/ui/StewardChatbot';
-import { DashboardHeader } from '../components/layout/DashboardHeader';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import { DataImportExport } from '../components/projects/DataImportExport';
 import { motion, AnimatePresence } from 'motion/react';
 import { formatCurrency, formatMillions } from '../lib/format';
 import { usePriestDashboardData } from '../hooks/usePriestDashboardData';
 import { FadeIn } from '../components/ui/FadeIn';
+import { ALL_PARISHES, INITIAL_PARISHES, INITIAL_SCHOOLS, INITIAL_SEMINARIES } from '../constants';
+import { getAccessRoleLabel } from '../lib/access';
 
 interface PriestDashboardProps {
   role?: 'priest' | 'school' | 'seminary' | 'bishop';
@@ -46,6 +47,153 @@ interface ComparisonRecord {
   variance: number;
   variancePercent: number;
   year: string;
+}
+
+type EntityDashboardNavProps = {
+  title: string;
+  entityName: string;
+  entityType: 'parish' | 'school' | 'seminary';
+  district?: string;
+  vicariate?: string;
+  leaderLabel: string;
+  leaderName?: string;
+  accessLabel?: string;
+  timeframe: '3m' | '6m' | '12m';
+  year: number;
+  userInitial: string;
+  isEmbedded?: boolean;
+  onTimeframeChange: (timeframe: '3m' | '6m' | '12m') => void;
+  onYearChange?: (year: number) => void;
+  onProfileClick?: () => void;
+};
+
+function EntityDashboardNav({
+  title,
+  entityName,
+  entityType,
+  district,
+  vicariate,
+  leaderLabel,
+  leaderName,
+  accessLabel,
+  timeframe,
+  year,
+  userInitial,
+  isEmbedded = false,
+  onTimeframeChange,
+  onYearChange,
+  onProfileClick,
+}: EntityDashboardNavProps) {
+  const [isTimeframeOpen, setIsTimeframeOpen] = useState(false);
+  const [isYearOpen, setIsYearOpen] = useState(false);
+  const timeframeLabels: Record<'3m' | '6m' | '12m', string> = {
+    '3m': 'Past 3 Months',
+    '6m': 'Past 6 Months',
+    '12m': 'Past 12 Months',
+  };
+  const metaItems = entityType === 'parish'
+    ? [
+        district || 'District not assigned',
+        vicariate ? `${stripVicariatePrefix(vicariate)} Vicariate` : 'Vicariate not assigned',
+        `${leaderLabel}: ${leaderName || 'Not assigned'}`,
+        accessLabel ? `Access: ${accessLabel}` : undefined,
+      ].filter(Boolean)
+    : [
+        vicariate ? `${stripVicariatePrefix(vicariate)} Vicariate` : undefined,
+        `${leaderLabel}: ${leaderName || 'Not assigned'}`,
+      ].filter(Boolean);
+
+  return (
+    <header className={`${isEmbedded ? 'relative mt-10' : 'sticky top-0'} z-40 bg-black border-b border-gold-500/25 px-4 md:px-8 py-3 shadow-xl`}>
+      <div className={`max-w-[1800px] mx-auto ${isEmbedded ? 'flex flex-col items-start gap-3' : 'flex items-center justify-between gap-4'}`}>
+        <div className="min-w-0">
+          <h1 className={`font-serif font-bold text-gold-400 tracking-tight ${isEmbedded ? 'text-3xl md:text-4xl' : 'text-lg md:text-2xl'}`}>
+            {title}
+          </h1>
+          <p className="mt-1 text-[10px] md:text-xs font-black uppercase tracking-[0.18em] text-white truncate">
+            {entityName}
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] md:text-xs font-semibold text-white/45">
+            {metaItems.map((item, index) => (
+              <React.Fragment key={item}>
+                {index > 0 && <span className="hidden sm:inline text-gold-500/60">•</span>}
+                <span className="truncate">{item}</span>
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+
+        {!isEmbedded && (
+          <div className="flex shrink-0 items-center gap-2 md:gap-3">
+          <div className="relative hidden sm:block">
+            <button
+              onClick={() => setIsTimeframeOpen((prev) => !prev)}
+              className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 md:px-4 py-2 text-xs font-bold text-white hover:border-gold-400/50 hover:bg-gold-500/15 transition-colors"
+            >
+              <CalendarDays size={14} className="text-gold-400" />
+              <span>{timeframeLabels[timeframe]}</span>
+              <ChevronDown size={14} className={`text-white/50 transition-transform ${isTimeframeOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {isTimeframeOpen && (
+              <div className="absolute right-0 mt-2 w-44 rounded-xl border border-gold-500/25 bg-black/95 py-2 shadow-2xl">
+                {(Object.keys(timeframeLabels) as Array<'3m' | '6m' | '12m'>).map((value) => (
+                  <button
+                    key={value}
+                    onClick={() => {
+                      onTimeframeChange(value);
+                      setIsTimeframeOpen(false);
+                    }}
+                    className={`w-full px-4 py-2.5 text-left text-xs font-bold transition-colors ${
+                      timeframe === value ? 'text-gold-400 bg-gold-500/10' : 'text-gray-300 hover:bg-white/5 hover:text-white'
+                    }`}
+                  >
+                    {timeframeLabels[value]}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="relative hidden sm:block">
+            <button
+              onClick={() => setIsYearOpen((prev) => !prev)}
+              className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 md:px-4 py-2 text-xs font-bold text-white hover:border-gold-400/50 hover:bg-gold-500/15 transition-colors"
+            >
+              <span>{year}</span>
+              <ChevronDown size={14} className={`text-white/50 transition-transform ${isYearOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {isYearOpen && (
+              <div className="absolute right-0 mt-2 w-28 rounded-xl border border-gold-500/25 bg-black/95 py-2 shadow-2xl">
+                {[2026, 2025, 2024, 2023, 2022].map((value) => (
+                  <button
+                    key={value}
+                    onClick={() => {
+                      onYearChange?.(value);
+                      setIsYearOpen(false);
+                    }}
+                    className={`w-full px-4 py-2.5 text-left text-xs font-bold transition-colors ${
+                      year === value ? 'text-gold-400 bg-gold-500/10' : 'text-gray-300 hover:bg-white/5 hover:text-white'
+                    }`}
+                  >
+                    {value}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={onProfileClick}
+            className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-gradient-to-br from-gold-400 to-gold-600 text-black font-black border border-gold-300 shadow-[0_0_18px_rgba(212,175,55,0.35)] hover:shadow-[0_0_24px_rgba(212,175,55,0.55)] transition-shadow"
+            aria-label="Open account settings"
+          >
+            {userInitial}
+          </button>
+        </div>
+        )}
+      </div>
+    </header>
+  );
 }
 
 const donationTrendsData = [
@@ -289,6 +437,7 @@ export function PriestDashboard({
   onLogout
 }: PriestDashboardProps) {
   const [analyticsView, setAnalyticsView] = useState<'descriptive' | 'predictive' | 'prescriptive' | 'health'>('descriptive');
+  const [activeTimeframe, setActiveTimeframe] = useState<'3m' | '6m' | '12m'>(timeframe);
   const [selectedDiagnostic, setSelectedDiagnostic] = useState<DiagnosticResult | null>(null);
   const [collectionsTimeframe, setCollectionsTimeframe] = useState<'6m' | '12m'>('12m');
   const [disbursementsTimeframe, setDisbursementsTimeframe] = useState<'6m' | '12m'>('12m');
@@ -308,13 +457,12 @@ export function PriestDashboard({
   const [optimizationFilter, setOptimizationFilter] = useState<'all' | 'medical aid' | 'food support' | 'emergency cash' | 'education aid'>('all');
   const [donationTrendsFilter, setDonationTrendsFilter] = useState<'all' | 'actual' | 'potential'>('all');
   const [donationTrendsMode, setDonationTrendsMode] = useState<'amount' | 'performance'>('performance');
-  const [showPriestFilters, setShowPriestFilters] = useState(false);
   const [comparisonMonth1, setComparisonMonth1] = useState<(typeof COMPARISON_MONTH_OPTIONS)[number]>('Jan');
   const [comparisonYear1, setComparisonYear1] = useState<(typeof COMPARISON_YEAR_OPTIONS)[number]>('2025');
   const [comparisonMonth2, setComparisonMonth2] = useState<(typeof COMPARISON_MONTH_OPTIONS)[number]>('Jan');
   const [comparisonYear2, setComparisonYear2] = useState<(typeof COMPARISON_YEAR_OPTIONS)[number]>('2026');
   const [medicalStatusFilter, setMedicalStatusFilter] = useState<'all' | 'urgent' | 'followup'>('all');
-  const [priestScope, setPriestScope] = useState<'overall' | 'specific'>('overall');
+  const [priestScope] = useState<'specific'>('specific');
 
   const mappedType = useMemo(() => {
     if (role === 'priest') return 'parish';
@@ -323,7 +471,11 @@ export function PriestDashboard({
     return 'parish';
   }, [role]);
 
-  const currentEntityId = useMemo(() => isEmbedded ? entityName : auth.currentUser?.uid, [isEmbedded, entityName]);
+  const currentEntityId = useMemo(() => isEmbedded ? entityName : ((auth.currentUser as any)?.entityId || undefined), [isEmbedded, entityName]);
+
+  useEffect(() => {
+    setActiveTimeframe(timeframe);
+  }, [timeframe]);
 
   const { 
     records, 
@@ -339,10 +491,10 @@ export function PriestDashboard({
 
   // Filter main dashboard records based on navbar timeframe selector
   const filteredRecords = useMemo(() => {
-    if (timeframe === '3m') return records.slice(-3);
-    if (timeframe === '6m') return records.slice(-6);
+    if (activeTimeframe === '3m') return records.slice(-3);
+    if (activeTimeframe === '6m') return records.slice(-6);
     return records; // '12m' or 'all' - return all records
-  }, [timeframe, records]);
+  }, [activeTimeframe, records]);
 
   const filteredCollectionsData = useMemo(() => {
     return filteredRecords;
@@ -729,16 +881,53 @@ export function PriestDashboard({
     { event: 'Christmas', month: 'December', expectedIncrease: '+35%', driver: 'Simbang Gabi expenses, bonuses, charity' },
   ], []);
 
-  // In a real app, this would be filtered by the logged-in user's entity ID
-  const entityInfo = useMemo(() => {
-    if (entityName && entityType && entityClass) {
-      return { name: entityName, type: entityType, class: entityClass };
-    }
-    return userEntityInfo;
-  }, [entityName, entityType, entityClass, userEntityInfo]);
+  const entityTypeForDashboard = mappedType as 'parish' | 'school' | 'seminary';
 
-  const entityLabel = role === 'school' ? 'School' : role === 'seminary' ? 'Seminary' : role === 'priest' ? 'Priest' : 'Parish';
-  const isPriestOverallView = role === 'priest' && priestScope === 'overall';
+  const entityDirectory = useMemo(() => {
+    if (entityTypeForDashboard === 'school') {
+      const stored = JSON.parse(localStorage.getItem('schools') || '[]');
+      return [...stored, ...INITIAL_SCHOOLS];
+    }
+    if (entityTypeForDashboard === 'seminary') {
+      const stored = JSON.parse(localStorage.getItem('seminaries') || '[]');
+      return [...stored, ...INITIAL_SEMINARIES];
+    }
+    const stored = JSON.parse(localStorage.getItem('parishes') || '[]');
+    return [...stored, ...INITIAL_PARISHES, ...ALL_PARISHES];
+  }, [entityTypeForDashboard]);
+
+  const entityInfo = useMemo(() => {
+    const findEntity = (name?: string, id?: string) => entityDirectory.find((entity: any) => (
+      (id && entity.id === id) || (name && entity.name?.toLowerCase() === name.toLowerCase())
+    ));
+
+    if (entityName && entityType && entityClass) {
+      const matched = findEntity(entityName, currentEntityId);
+      return {
+        id: currentEntityId || matched?.id || entityName.toLowerCase().replace(/\s+/g, '_'),
+        name: entityName,
+        type: entityTypeForDashboard,
+        class: entityClass,
+        district: matched?.district,
+        vicariate: matched?.vicariate,
+        leader: matched?.pastor || matched?.principal || matched?.rector,
+      };
+    }
+    const matched = findEntity(userEntityInfo.name, currentEntityId || userEntityInfo.id);
+    return {
+      ...userEntityInfo,
+      type: entityTypeForDashboard,
+      id: currentEntityId || userEntityInfo.id,
+      district: matched?.district,
+      vicariate: matched?.vicariate,
+      leader: matched?.pastor || matched?.principal || matched?.rector,
+    };
+  }, [currentEntityId, entityClass, entityDirectory, entityName, entityType, entityTypeForDashboard, userEntityInfo]);
+
+  const entityLabel = role === 'school' ? 'School' : role === 'seminary' ? 'Seminary' : 'Parish';
+  const leaderLabel = entityTypeForDashboard === 'school' ? 'Principal' : entityTypeForDashboard === 'seminary' ? 'Rector' : 'Parish Priest';
+  const accountRoleLabel = getAccessRoleLabel(auth.currentUser?.roleId || auth.currentUser?.accessRole || role);
+  const isPriestOverallView = false;
 
   const displayEntityName = useMemo(() => {
     if (isPriestOverallView) return 'All Priests in Diocese';
@@ -750,8 +939,8 @@ export function PriestDashboard({
       // Add entityId and entityType to records
       const recordsWithEntity = importedRecords.map(record => ({
         ...record,
-        entityId: entityInfo.name.toLowerCase().replace(/\s+/g, '_'),
-        entityType: role as 'parish' | 'school' | 'seminary',
+        entityId: entityInfo.id,
+        entityType: entityTypeForDashboard,
         year: year,
       }));
       
@@ -772,85 +961,36 @@ export function PriestDashboard({
 
   return (
     <>
-      {role !== 'priest' && (
-        <DashboardHeader 
-          title="Parish Financial Dashboard"
-          subtitle={entityInfo.name}
-          priestName="Parish Priest: Rev. Fr. Noel Artillaga"
-          userInitial={auth.currentUser?.email?.[0]?.toUpperCase() || 'P'}
-          timeframe={timeframe as '3m' | '6m' | '12m'}
-          onTimeframeChange={(tf) => {
-            // Since timeframe is passed as prop, we need onTimeframeChange from props
-            // For now, just trigger year change for demo
-          }}
+      {!isEmbedded && (
+        <EntityDashboardNav
+          title={`${entityLabel} Financial Dashboard`}
+          entityName={entityInfo.name}
+          entityType={entityTypeForDashboard}
+          district={entityInfo.district}
+          vicariate={entityInfo.vicariate}
+          leaderLabel={leaderLabel}
+          leaderName={entityInfo.leader}
+          accessLabel={entityTypeForDashboard === 'parish' ? accountRoleLabel : undefined}
+          timeframe={activeTimeframe}
           year={year}
+          userInitial={auth.currentUser?.email?.[0]?.toUpperCase() || 'P'}
+          onTimeframeChange={setActiveTimeframe}
           onYearChange={onYearChange}
-          onSettingsClick={() => {
-            onNavigate?.('settings');
-          }}
-          onLogout={() => {
-            localStorage.removeItem('currentUser');
-            onLogout?.();
-          }}
+          onProfileClick={() => onNavigate?.('settings')}
         />
-      )}
-
-      {role === 'priest' && (
-        <div className="max-w-[1800px] mx-auto px-4 md:px-6 lg:px-12 pt-4 md:pt-5">
-          <div className="bg-black rounded-full px-4 md:px-5 py-2.5 flex items-center justify-between shadow-xl border border-white/5 gap-3">
-            <button
-              onClick={() => setShowPriestFilters((prev) => !prev)}
-              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-black border border-white/15 text-gray-200 hover:text-white hover:border-gold-400/40 transition-all"
-            >
-              <Filter size={14} />
-              <span className="text-xs font-black uppercase tracking-[0.2em]">Filters</span>
-            </button>
-
-            <div className="flex items-center gap-3 flex-wrap justify-end">
-              <div className="w-9 h-9 bg-gradient-to-br from-gold-400 to-gold-600 rounded-full flex items-center justify-center text-black font-black border border-gold-300 shadow-[0_0_16px_rgba(212,175,55,0.35)]">
-                {auth.currentUser?.email?.[0]?.toUpperCase() || 'P'}
-              </div>
-            </div>
-          </div>
-
-          {showPriestFilters && (
-            <div className="mt-3 bg-white rounded-2xl border border-gray-200 shadow-sm p-4 flex items-center gap-3 flex-wrap">
-              <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Scope</label>
-              <select
-                value={priestScope}
-                onChange={(e) => setPriestScope(e.target.value as 'overall' | 'specific')}
-                className="bg-gray-100 border-none text-[10px] font-bold text-church-green rounded-lg px-3 py-2 outline-none cursor-pointer hover:bg-gray-200 transition-colors"
-              >
-                <option value="overall">OVERALL DIOCESE PRIESTS</option>
-                <option value="specific">SPECIFIC FILTERED VIEW</option>
-              </select>
-
-              <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Financial Risk</label>
-              <select
-                value={medicalStatusFilter}
-                onChange={(e) => setMedicalStatusFilter(e.target.value as 'all' | 'urgent' | 'followup')}
-                className="bg-gray-100 border-none text-[10px] font-bold text-church-green rounded-lg px-3 py-2 outline-none cursor-pointer hover:bg-gray-200 transition-colors"
-              >
-                <option value="all">ALL REQUESTS</option>
-                <option value="urgent">HIGH RISK</option>
-                <option value="followup">FOLLOW-UP REQUIRED</option>
-              </select>
-            </div>
-          )}
-        </div>
       )}
 
       {/* Main Content */}
       <div className="space-y-6 pb-24 md:pb-12 max-w-[1800px] mx-auto px-4 md:px-6 lg:px-12 pt-6 md:pt-5">
-      {/* Welcome & Alerts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
-        {/* Welcome Card */}
-        <FadeIn 
-          direction="up"
-          className="lg:col-span-2 bg-gradient-to-br from-[#FFFBF0] via-white to-white border-none rounded-[1.5rem] p-5 shadow-xl flex flex-col justify-center relative overflow-hidden group"
-        >
+        {!isEmbedded && (
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
+            {/* Welcome Card */}
+            <FadeIn 
+              direction="up"
+              className="lg:col-span-2 bg-gradient-to-br from-[#FFFBF0] via-white to-white border-none rounded-[1.5rem] p-5 shadow-xl flex flex-col justify-center relative overflow-hidden group"
+            >
           <div className="absolute top-0 right-0 w-64 h-64 bg-gold-500/5 rounded-full -mr-32 -mt-32 blur-3xl group-hover:bg-gold-500/10 transition-colors duration-700"></div>
-          <div className={`relative z-10 ${role === 'priest' ? 'grid gap-5 md:grid-cols-[minmax(0,1fr)_220px] md:items-center' : 'space-y-5'}`}>
+          <div className="relative z-10 space-y-5">
             <div className="space-y-5">
               <div className="inline-flex items-center gap-2 bg-gold-50 text-gold-600 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.2em] border border-gold-100 shadow-sm">
                 <Sparkles size={12} />
@@ -864,7 +1004,7 @@ export function PriestDashboard({
                 <span className="text-[10px] font-black uppercase tracking-wider text-gray-600 bg-gray-50 border border-gray-100 rounded-lg px-3 py-1.5 shadow-sm">
                   {displayEntityName}
                 </span>
-                {role === 'priest' && (
+                {false && (
                   <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-1.5 shadow-sm flex items-center gap-1.5">
                     <AlertTriangle size={12} />
                     Financial Decision Support
@@ -894,14 +1034,14 @@ export function PriestDashboard({
                 {isPriestOverallView ? 'Diocese Priests Overview' : entityInfo.name}
               </h1>
               <div className="flex items-center gap-2 text-[10px] md:text-xs text-gray-400 font-black uppercase tracking-[0.15em] mt-1">
-                <span>{isPriestOverallView ? 'Diocese of San Pablo' : stripVicariatePrefix(entityInfo.type)}</span>
+                <span>{entityInfo.vicariate ? `${stripVicariatePrefix(entityInfo.vicariate)} Vicariate` : entityInfo.type}</span>
                 <span className="w-1.5 h-1.5 rounded-full bg-gold-500"></span>
                 <span className="text-gold-600">{isPriestOverallView ? 'Overall' : entityInfo.class}</span>
               </div>
             </div>
 
             <div className="mt-6 space-y-2.5 relative z-10">
-              {role === 'priest' ? (
+              {false ? (
                 <>
                   <div className="flex items-center justify-between mb-1">
                     <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Financial Pipeline Snapshot</p>
@@ -988,7 +1128,7 @@ export function PriestDashboard({
                         <p className="mb-3 text-[10px] font-black uppercase tracking-widest text-gray-500">Data Management</p>
                         <DataImportExport
                           entityName={entityInfo.name}
-                          entityType={role as 'parish' | 'school' | 'seminary'}
+                          entityType={entityTypeForDashboard}
                           year={year || 2026}
                           onImport={handleImportRecords}
                         />
@@ -1000,7 +1140,7 @@ export function PriestDashboard({
             </div>
           </div>
         </FadeIn>
-      </div>
+      </div>) }
 
       {role === 'seminary' && (
         <FadeIn direction="up" delay={0.15}>
@@ -1015,7 +1155,7 @@ export function PriestDashboard({
 
 
       {/* Priest Assignment Health Score */}
-      {priestAssignmentScore && (
+      {false && priestAssignmentScore && (
         <FadeIn 
           direction="up"
           className="grid grid-cols-1 gap-3"

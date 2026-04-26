@@ -14,6 +14,7 @@ interface SettingsProps {
   onLogout: () => void;
   onNavigate?: (page: string) => void;
   role?: Role;
+  initialTab?: string;
 }
 
 import { UserRoleControl } from '../components/settings/UserRoleControl';
@@ -21,9 +22,16 @@ import { DataManagementControl } from '../components/settings/DataManagementCont
 import { EntityManagementControl } from '../components/settings/EntityManagementControl';
 import { ParishClassificationLogic } from '../components/settings/ParishClassificationLogic';
 import { DashboardHeader } from '../components/layout/DashboardHeader';
+import { getAccessRoleLabel, getAppRole, normalizeAccessRole } from '../lib/access';
 
-export function Settings({ onBack, onLogout, onNavigate, role = 'bishop' }: SettingsProps) {
-  const [activeTab, setActiveTab] = useState((role === 'bishop' || role === 'admin') ? 'user-management' : 'security');
+export function Settings({ onBack, onLogout, onNavigate, role = 'bishop', initialTab }: SettingsProps) {
+  const [activeTab, setActiveTab] = useState(initialTab || ((role === 'bishop' || role === 'admin') ? 'user-management' : 'security'));
+
+  React.useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
   
   const [accounts, setAccounts] = useState<any[]>([]);
   const [roles, setRoles] = useState<UserRole[]>(INITIAL_ROLES);
@@ -41,7 +49,8 @@ export function Settings({ onBack, onLogout, onNavigate, role = 'bishop' }: Sett
         entity: u.entityName || 'Unassigned',
         leader: u.displayName || u.email.split('@')[0],
         email: u.email,
-        role: u.role.charAt(0).toUpperCase() + u.role.slice(1),
+        role: getAccessRoleLabel(u.roleId || u.accessRole || u.role),
+        roleId: normalizeAccessRole(u.roleId || u.accessRole || u.role),
         status: u.status || 'active',
         entityId: u.entityId,
         entityType: u.entityType
@@ -115,8 +124,25 @@ export function Settings({ onBack, onLogout, onNavigate, role = 'bishop' }: Sett
     entity: '',
     leader: '',
     email: '',
-    role: INITIAL_ROLES[2].name // Default to Parish Priest
+    role: INITIAL_ROLES[2].id
   });
+
+  const findSelectedEntity = (entityName: string, accessRoleId: string) => {
+    const appRole = getAppRole(accessRoleId);
+    const entityType = appRole === 'school' ? 'school' : appRole === 'seminary' ? 'seminary' : appRole === 'bishop' || appRole === 'admin' ? 'diocese' : 'parish';
+    const entityList = entityType === 'school'
+      ? [...schools, ...INITIAL_SCHOOLS]
+      : entityType === 'seminary'
+        ? [...seminaries, ...INITIAL_SEMINARIES]
+        : [...parishes, ...INITIAL_PARISHES];
+    const entity = entityList.find((item) => item.name === entityName);
+
+    return {
+      appRole,
+      entityType,
+      entityId: entity?.id || entityName.toLowerCase().replace(/\s+/g, '_'),
+    };
+  };
 
   const handleSaveAccount = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -124,13 +150,19 @@ export function Settings({ onBack, onLogout, onNavigate, role = 'bishop' }: Sett
     
     try {
       const storedUsers = JSON.parse(localStorage.getItem('users') || '[]');
+      const accessRole = normalizeAccessRole(formState.role);
+      const selectedEntity = findSelectedEntity(formState.entity, accessRole);
       if (editingAccountId !== null) {
         const updatedUsers = storedUsers.map((u: any) => 
           u.id === editingAccountId.toString() ? {
             ...u,
             email: formState.email,
-            role: formState.role.toLowerCase(),
+            role: selectedEntity.appRole,
+            accessRole,
+            roleId: accessRole,
             entityName: formState.entity,
+            entityType: selectedEntity.entityType,
+            entityId: selectedEntity.entityId,
             displayName: formState.leader
           } : u
         );
@@ -140,8 +172,12 @@ export function Settings({ onBack, onLogout, onNavigate, role = 'bishop' }: Sett
         const newUser = {
           id: Date.now().toString(),
           email: formState.email,
-          role: formState.role.toLowerCase(),
+          role: selectedEntity.appRole,
+          accessRole,
+          roleId: accessRole,
           entityName: formState.entity,
+          entityType: selectedEntity.entityType,
+          entityId: selectedEntity.entityId,
           displayName: formState.leader,
           status: 'active',
           createdAt: new Date().toISOString()
@@ -164,7 +200,7 @@ export function Settings({ onBack, onLogout, onNavigate, role = 'bishop' }: Sett
       entity: account.entity,
       leader: account.leader,
       email: account.email,
-      role: account.role
+      role: account.roleId || normalizeAccessRole(account.role)
     });
     setIsModalOpen(true);
   };
@@ -196,7 +232,7 @@ export function Settings({ onBack, onLogout, onNavigate, role = 'bishop' }: Sett
   const closeModal = () => {
     setIsModalOpen(false);
     setEditingAccountId(null);
-    setFormState({ entity: '', leader: '', email: '', role: roles[2]?.name || 'Parish Priest' });
+    setFormState({ entity: '', leader: '', email: '', role: roles[2]?.id || 'parish_priest' });
   };
 
   const filteredAccounts = accounts.filter(acc => 
@@ -310,8 +346,11 @@ export function Settings({ onBack, onLogout, onNavigate, role = 'bishop' }: Sett
                     <option value="" disabled>Select an entity</option>
                     {Array.from(new Set([
                       ...parishes.map(p => p.name),
+                      ...INITIAL_PARISHES.map(p => p.name),
                       ...seminaries.map(s => s.name),
-                      ...schools.map(s => s.name)
+                      ...INITIAL_SEMINARIES.map(s => s.name),
+                      ...schools.map(s => s.name),
+                      ...INITIAL_SCHOOLS.map(s => s.name)
                     ])).sort().map(name => (
                       <option key={name} value={name}>{name}</option>
                     ))}
@@ -348,7 +387,7 @@ export function Settings({ onBack, onLogout, onNavigate, role = 'bishop' }: Sett
                     className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-700 focus:outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] transition-all appearance-none bg-white"
                   >
                     {roles.map(r => (
-                      <option key={r.id} value={r.name}>{r.name}</option>
+                      <option key={r.id} value={r.id}>{r.name}</option>
                     ))}
                   </select>
                 </div>

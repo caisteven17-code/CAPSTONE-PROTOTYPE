@@ -155,18 +155,18 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
                 </div>
                 <button
                   onClick={() => {
-                    onSettingsClick?.();
                     setIsAccountOpen(false);
+                    onSettingsClick?.();
                   }}
                   className="w-full px-4 py-3 text-left text-sm text-gray-300 hover:bg-gold-500/10 hover:text-gold-400 transition-all flex items-center gap-3 border-b border-gold-500/10"
                 >
                   <Settings size={16} />
-                  Settings & Security
+                  Change Password
                 </button>
                 <button
                   onClick={() => {
-                    onLogout?.();
                     setIsAccountOpen(false);
+                    onLogout?.();
                   }}
                   className="w-full px-4 py-3 text-left text-sm text-gray-300 hover:bg-red-500/10 hover:text-red-400 transition-all flex items-center gap-3"
                 >

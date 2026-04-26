@@ -4,9 +4,10 @@ import React, { useState } from 'react';
 import { Shield, Eye, EyeOff, LogIn } from 'lucide-react';
 import { Footer } from '../components/layout/Footer';
 import { auth } from '../firebase';
+import { AppRole, getAccessRoleLabel, getAppRole, normalizeAccessRole } from '../lib/access';
 
 interface LoginProps {
-  onLogin: (role: 'bishop' | 'admin' | 'priest' | 'school' | 'seminary') => void;
+  onLogin: (role: AppRole) => void;
 }
 
 export function Login({ onLogin }: LoginProps) {
@@ -23,18 +24,55 @@ export function Login({ onLogin }: LoginProps) {
 
     try {
       // Local authentication mock
+      const lowerEmail = email.toLowerCase().trim();
+      const validSampleCredentials: Record<string, { password: string; accessRole: 'parish_priest' | 'parish_secretary'; displayName: string }> = {
+        'priest@gmail.com': {
+          password: 'password123',
+          accessRole: 'parish_priest',
+          displayName: 'Parish Priest',
+        },
+        'parishsecretary@gmail.com': {
+          password: 'password123',
+          accessRole: 'parish_secretary',
+          displayName: 'Parish Secretary',
+        },
+      };
+
       let displayName = email.split('@')[0];
-      let role: any = 'priest';
+      let accessRole = normalizeAccessRole('parish_priest');
+      let role = getAppRole(accessRole);
+      let entityName = '';
+      let entityType = 'parish';
+      let entityId = '';
       
-      const lowerEmail = email.toLowerCase();
-      
-      // Predefined accounts for testing
-      if (lowerEmail === 'bishop@diocese.com') {
+      const storedUsers = JSON.parse(localStorage.getItem('users') || '[]');
+      const storedUser = storedUsers.find((user: any) => user.email?.toLowerCase() === lowerEmail && user.status !== 'archived');
+      const sampleCredential = validSampleCredentials[lowerEmail];
+
+      if (sampleCredential) {
+        if (password !== sampleCredential.password) {
+          throw new Error('Invalid credentials');
+        }
+        displayName = sampleCredential.displayName;
+        accessRole = sampleCredential.accessRole;
+        role = getAppRole(accessRole);
+        entityName = 'San Isidro Labrador Parish';
+      } else if (storedUser) {
+        accessRole = normalizeAccessRole(storedUser.roleId || storedUser.accessRole || storedUser.role);
+        role = getAppRole(accessRole);
+        displayName = storedUser.displayName || storedUser.email.split('@')[0];
+        entityName = storedUser.entityName || '';
+        entityType = storedUser.entityType || (role === 'school' ? 'school' : role === 'seminary' ? 'seminary' : 'parish');
+        entityId = storedUser.entityId || '';
+      } else if (lowerEmail === 'bishop@diocese.com') {
         displayName = 'San Pablo Cathedral';
         role = 'bishop';
+        accessRole = 'bishop';
+        entityType = 'diocese';
       } else if (lowerEmail === 'parish@church.com') {
         displayName = 'San Isidro Labrador (Biñan)';
-        role = 'priest';
+        role = 'parish_priest';
+        accessRole = 'parish_priest';
       } else if (lowerEmail === 'seminary@church.com') {
         displayName = "St. Peter's College Seminary";
         role = 'seminary';
@@ -49,6 +87,22 @@ export function Login({ onLogin }: LoginProps) {
         else if (lowerEmail.includes('seminary')) role = 'seminary';
       }
 
+      if (!storedUser && !sampleCredential) {
+        if (lowerEmail === 'bishop@diocese.com' || role === 'bishop') accessRole = 'bishop';
+        else if (role === 'admin') accessRole = 'diocese_admin';
+        else if (lowerEmail === 'secretary@church.com' || lowerEmail.includes('secretary')) accessRole = 'parish_secretary';
+        else if (role === 'seminary') accessRole = 'seminary_rector';
+        else if (role === 'school') accessRole = 'school_registrar';
+        else accessRole = 'parish_priest';
+
+        role = getAppRole(accessRole);
+        entityType = role === 'school' ? 'school' : role === 'seminary' ? 'seminary' : role === 'bishop' || role === 'admin' ? 'diocese' : 'parish';
+
+        if (!entityName && (role === 'parish_priest' || role === 'parish_secretary')) entityName = 'San Isidro Labrador Parish';
+        if (!entityName && role === 'seminary') entityName = "St. Peter's College Seminary";
+        if (!entityName && role === 'school') entityName = 'Liceo de San Pablo';
+      }
+
       const user = {
         uid: Math.random().toString(36).substr(2, 9),
         email: email,
@@ -58,6 +112,12 @@ export function Login({ onLogin }: LoginProps) {
       const userData = {
         ...user,
         role: role,
+        accessRole,
+        roleId: accessRole,
+        roleLabel: getAccessRoleLabel(accessRole),
+        entityName,
+        entityType,
+        entityId,
         status: 'active'
       };
 
@@ -163,6 +223,12 @@ export function Login({ onLogin }: LoginProps) {
               )}
             </button>
           </form>
+
+          <div className="mt-5 text-xs text-gray-300 border-t border-white/20 pt-4">
+            <p className="font-semibold text-white text-sm mb-2">Sample parish test accounts</p>
+            <p>priest@gmail.com / password123</p>
+            <p>parishsecretary@gmail.com / password123</p>
+          </div>
         </div>
       </div>
       {/* Footer - Sticky at bottom */}

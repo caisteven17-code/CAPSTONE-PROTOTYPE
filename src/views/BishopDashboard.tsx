@@ -46,27 +46,6 @@ const topTierParishesData = [
   { rank: 5, name: 'St. John Bosco Parish', location: 'SAN PABLO', class: 'Class B' },
 ];
 
-const contributionData = [
-  { name: 'Holy Family', value: 12 },
-  { name: 'San Isidro Labrador', value: 15 },
-  { name: 'San Pedro Apostol', value: 10 },
-  { name: 'Sta. Rosa De Lima', value: 8 },
-  { name: 'St. Polycarp', value: 8 },
-  { name: 'St. John the Baptist', value: 12 },
-  { name: 'Immaculate Conception', value: 7 },
-  { name: 'St. Paul the First Hermit', value: 9 },
-  { name: 'San Bartolome', value: 6 },
-  { name: 'San Antonio De Padua', value: 5 },
-  { name: 'Our Lady of Guadalupe', value: 4 },
-  { name: 'St. James', value: 3 },
-  { name: 'Sts. Peter and Paul', value: 1 },
-];
-const CONTRIBUTION_COLORS = [
-  '#1a472a', '#D4AF37', '#4ade80', '#E6C27A', '#3d6e36',
-  '#B5952F', '#4e8245', '#8B7522', '#5f9654', '#70aa63',
-  '#81be72', '#92d281'
-];
-
 const seasonalityData = [
   { month: 'Jan', value: 130 },
   { month: 'Feb', value: 115 },
@@ -80,19 +59,6 @@ const seasonalityData = [
   { month: 'Oct', value: 125 },
   { month: 'Nov', value: 135 },
   { month: 'Dec', value: 240 }, // Christmas
-];
-
-const donationTrendsData = [
-  { name: 'Msgr. Gerardo Santos', barValue: 1250000, lineValue: 3450000 },
-  { name: 'Fr. Juan Dela Cruz', barValue: 980000, lineValue: 2100000 },
-  { name: 'Fr. Ricardo Reyes', barValue: 750000, lineValue: 1500000 },
-  { name: 'Fr. Miguel Santos', barValue: 620000, lineValue: 1100000 },
-  { name: 'Fr. Antonio Luna', barValue: 450000, lineValue: 800000 },
-  { name: 'Fr. Jose Rizal', barValue: 380000, lineValue: 600000 },
-  { name: 'Fr. Andres Bonifacio', barValue: 250000, lineValue: 400000 },
-  { name: 'Fr. Emilio Aguinaldo', barValue: 120000, lineValue: 250000 },
-  { name: 'Fr. Apolinario Mabini', barValue: 85000, lineValue: 150000 },
-  { name: 'Fr. Marcelo H. Del Pilar', barValue: 60000, lineValue: 50000 },
 ];
 
 // Seminary Specific Analytics Data
@@ -683,8 +649,6 @@ export function BishopDashboard({
   const [enrollmentFilter, setEnrollmentFilter] = useState<'all' | 'enrollment' | 'capacity'>('all');
   const [formationFilter, setFormationFilter] = useState<'all' | 'propaedeutic' | 'philosophy' | 'theology'>('all');
   const [enrollmentForecastFilter, setEnrollmentForecastFilter] = useState<'all' | 'enrollment' | 'capacity'>('all');
-  const [donationTrendsFilter, setDonationTrendsFilter] = useState<'all' | 'actual' | 'potential'>('all');
-  const [donationTrendsMode, setDonationTrendsMode] = useState<'amount' | 'performance'>('performance');
   const [staffRatioFilter, setStaffRatioFilter] = useState<'all' | 'seminarians' | 'staff'>('all');
   const [collectionsDisbursementsFilter, setCollectionsDisbursementsFilter] = useState<'all' | 'collections' | 'disbursements'>('all');
 
@@ -728,11 +692,8 @@ export function BishopDashboard({
   const [classFilter, setClassFilter] = useState('All Classes');
   const [entityFilter, setEntityFilter] = useState('All Entities');
   const [filterMode, setFilterMode] = useState<'all' | 'per-entity'>('all');
-  const [contributionView, setContributionView] = useState<'entity' | 'vicariate'>('vicariate');
-  const [selectedVicariate, setSelectedVicariate] = useState<string | null>(null);
   const [selectedBarVicariate, setSelectedBarVicariate] = useState<string | null>(null);
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
-  const [contributionSortOrder, setContributionSortOrder] = useState<'desc' | 'asc'>('desc');
   const [showFilters, setShowFilters] = useState(false);
 
   const vocationSourceData = [
@@ -742,55 +703,6 @@ export function BishopDashboard({
     { name: 'Direct Applications', value: 10 },
   ];
   const VOCATION_SOURCE_COLORS = ['#1a472a', '#D4AF37', '#4ade80', '#E6C27A'];
-
-  const contributionData = useMemo(() => {
-    const entities = getEntitiesData(entityType);
-    
-    if (contributionView === 'entity') {
-      const total = entities.reduce((sum, p) => sum + (p.collections || 0), 0);
-      const data = entities.map(p => ({
-        name: p.name,
-        value: total > 0 ? Math.round(((p.collections || 0) / total) * 100) : 0,
-        actualValue: p.collections || 0
-      }));
-      return contributionSortOrder === 'asc' ? data.sort((a, b) => a.actualValue - b.actualValue).slice(0, 10) : data.sort((a, b) => b.actualValue - a.actualValue).slice(0, 10);
-    }
-    
-    // Calculate dynamic contribution based on entities
-    const vicariateTotals: Record<string, number> = {};
-    entities.forEach(p => {
-      const v = p.vicariate || 'Other';
-      vicariateTotals[v] = (vicariateTotals[v] || 0) + (p.collections || 0);
-    });
-    
-    const total = Object.values(vicariateTotals).reduce((a, b) => a + b, 0);
-    
-    const data = Object.entries(vicariateTotals).map(([name, value]) => ({
-      name,
-      value: total > 0 ? Math.round((value / total) * 100) : 0,
-      actualValue: value
-    }));
-    return contributionSortOrder === 'asc' ? data.sort((a, b) => a.actualValue - b.actualValue) : data.sort((a, b) => b.actualValue - a.actualValue);
-  }, [entityType, contributionView, contributionSortOrder]);
-
-  useEffect(() => {
-    setSelectedVicariate(null);
-  }, [contributionView, entityType]);
-
-  const parishContributionData = useMemo(() => {
-    if (!selectedVicariate) return [];
-    
-    const entities = getEntitiesData(entityType);
-    const entitiesInVicariate = entities.filter(p => p.vicariate === selectedVicariate);
-    const total = entitiesInVicariate.reduce((sum, p) => sum + (p.collections || 0), 0);
-    
-    const data = entitiesInVicariate.map(p => ({
-      name: p.name,
-      value: total > 0 ? Math.round(((p.collections || 0) / total) * 100) : 0,
-      actualValue: p.collections || 0
-    }));
-    return contributionSortOrder === 'asc' ? data.sort((a, b) => a.actualValue - b.actualValue) : data.sort((a, b) => b.actualValue - a.actualValue);
-  }, [selectedVicariate, contributionSortOrder, entityType]);
 
   const filteredTrendData = useMemo(() => {
     if (timeframe === '6m') return trendData.slice(-6);
@@ -945,24 +857,6 @@ export function BishopDashboard({
       value: d.value * scale
     }));
   }, [filteredEntities, currentEntities, filteredSeasonalityData]);
-
-  const dynamicDonationTrendsData = useMemo(() => {
-    const scale = filteredEntities.length / (currentEntities.length || 1);
-    const scaledData = donationTrendsData.map(d => ({
-      ...d,
-      barValue: d.barValue * scale,
-      lineValue: d.lineValue * scale
-    }));
-
-    const totalActual = scaledData.reduce((sum, row) => sum + row.barValue, 0);
-    const totalPotential = scaledData.reduce((sum, row) => sum + row.lineValue, 0);
-
-    return scaledData.map(row => ({
-      ...row,
-      barPercentage: totalActual > 0 ? (row.barValue / totalActual) * 100 : 0,
-      linePercentage: totalPotential > 0 ? (row.lineValue / totalPotential) * 100 : 0,
-    }));
-  }, [filteredEntities, currentEntities]);
 
   const kpiData = useMemo(() => {
     const totalCollections = records.length > 0 
@@ -2402,7 +2296,7 @@ export function BishopDashboard({
           </Card>
 
           {/* Row 3: Top Tier & Contribution */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6">
             {entityType === 'Seminaries' ? (
               <Card className="bg-[#1A1A1A] text-white border-none shadow-sm relative overflow-hidden rounded-xl min-h-[380px] flex flex-col">
                 <div className="absolute inset-0 opacity-[0.1] pointer-events-none z-0 flex items-center justify-center">
@@ -2475,104 +2369,6 @@ export function BishopDashboard({
                 </CardContent>
               </Card>
             )}
-
-            <Card className="border-none shadow-sm flex flex-col h-[520px]">
-              <CardHeader className="pb-4 pt-6 px-6 border-b border-gray-50">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2.5 rounded-xl ${selectedVicariate ? 'bg-gold-50' : 'bg-church-green/10'}`}>
-                      {selectedVicariate ? (
-                        <MapPin className="w-5 h-5 text-gold-600" />
-                      ) : (
-                        <TrendingUp className="w-5 h-5 text-church-green" />
-                      )}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        {selectedVicariate && (
-                          <button 
-                            onClick={() => setSelectedVicariate(null)}
-                            className="p-1 hover:bg-gray-100 rounded-md transition-colors text-gray-500 hover:text-gold-600"
-                            title="Back to Vicariates"
-                          >
-                            <ArrowLeft className="w-4 h-4" />
-                          </button>
-                        )}
-                        <h3 className="text-lg font-bold text-gray-900 tracking-tight">
-                          {selectedVicariate ? selectedVicariate : (entityType === 'Seminaries' ? 'Contribution by Seminary' : 'Contribution by Vicariate')}
-                        </h3>
-                      </div>
-                      <p className="text-sm text-gray-500 mt-0.5">
-                        {selectedVicariate ? 'Parish Breakdown' : 'Collections share across the diocese'}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {!selectedVicariate && (
-                      <div className="text-xs font-bold text-church-green bg-church-green/10 px-3 py-1.5 rounded-full">
-                        Top {contributionData.length}
-                      </div>
-                    )}
-                    <button
-                      onClick={() => setContributionSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
-                      className={`p-1.5 hover:bg-gray-100 rounded-md transition-colors text-gray-500 flex items-center gap-1 ${selectedVicariate ? 'hover:text-gold-600' : 'hover:text-church-green'}`}
-                      title={`Sort ${contributionSortOrder === 'desc' ? 'Ascending' : 'Descending'}`}
-                    >
-                      <ArrowUpDown className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="flex-1 flex flex-col py-2 min-h-0 px-4">
-                <div className="flex-1 w-full overflow-y-auto pr-2 scrollbar-light space-y-1 pb-4 mt-2">
-                  {(selectedVicariate ? parishContributionData : contributionData).map((entry, index, arr) => {
-                    const maxActualValue = Math.max(...arr.map(d => d.actualValue));
-                    const widthPercent = Math.max(2, (entry.actualValue / maxActualValue) * 100);
-                    
-                    return (
-                      <div 
-                        key={`${entry.name}-${index}`}
-                        onClick={() => {
-                          if (!selectedVicariate) setSelectedVicariate(entry.name);
-                        }}
-                        className={`relative group p-3 rounded-xl transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 border border-transparent ${!selectedVicariate ? 'cursor-pointer hover:bg-gray-200 hover:border-gray-300' : 'hover:bg-gold-50/60 hover:border-gold-100'}`}
-                      >
-                        <div className="flex justify-between items-end mb-2.5">
-                          <div className="flex items-center gap-2">
-                            <span className={`text-sm font-bold transition-colors text-gray-700 ${!selectedVicariate ? 'group-hover:text-church-green' : 'group-hover:text-gold-700'}`}>
-                              {stripVicariatePrefix(entry.name)}
-                            </span>
-                            {!selectedVicariate && (
-                              <ChevronRight className="w-4 h-4 text-gray-400 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300" />
-                            )}
-                          </div>
-                          <div className="flex items-baseline gap-3">
-                            <span className={`text-sm font-black text-gray-900 transition-colors ${!selectedVicariate ? 'group-hover:text-church-green' : 'group-hover:text-gold-700'}`}>
-                              {formatCurrency(entry.actualValue)}
-                            </span>
-                            <span className={`text-xs font-bold px-2 py-0.5 rounded-md w-12 text-center transition-colors ${!selectedVicariate ? 'text-church-green bg-church-green/10 group-hover:bg-church-green group-hover:text-white' : 'text-gold-700 bg-gold-100/50 group-hover:bg-gold-600 group-hover:text-white'}`}>
-                              {entry.value}%
-                            </span>
-                          </div>
-                        </div>
-                        <div className={`h-2.5 w-full rounded-full overflow-hidden flex ${!selectedVicariate ? 'bg-gray-100' : 'bg-gold-100/50'}`}>
-                          <div 
-                            className="h-full rounded-full transition-all duration-1000 ease-out relative shadow-sm group-hover:brightness-90"
-                            style={{ 
-                              width: `${widthPercent}%`,
-                              backgroundColor: !selectedVicariate ? '#1a472a' : '#D4AF37',
-                              opacity: Math.max(0.6, 1 - (index * 0.04))
-                            }}
-                          >
-                            <div className="absolute inset-0 bg-gradient-to-r from-transparent to-white/20" />
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
           </div>
 
           {/* Row 4: Seasonality */}
@@ -2672,137 +2468,6 @@ export function BishopDashboard({
                     </div>
                   </>
                 )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Row 5: Donation Trends */}
-          <Card className="border-none shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <div className="space-y-3">
-                <h3 className="text-2xl font-bold text-church-black">Donation Trends by Priest Assignment</h3>
-                <div className="inline-flex items-center bg-gray-100 rounded-lg p-1">
-                  <button
-                    type="button"
-                    onClick={() => setDonationTrendsMode('performance')}
-                    className={`px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wide transition-colors ${donationTrendsMode === 'performance' ? 'bg-white text-church-green shadow-sm' : 'text-gray-500 hover:text-church-green'}`}
-                  >
-                    Performance %
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDonationTrendsMode('amount')}
-                    className={`px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wide transition-colors ${donationTrendsMode === 'amount' ? 'bg-white text-church-green shadow-sm' : 'text-gray-500 hover:text-church-green'}`}
-                  >
-                    Income Amount
-                  </button>
-                </div>
-              </div>
-              <select 
-                value={donationTrendsFilter}
-                onChange={(e) => setDonationTrendsFilter(e.target.value as 'all' | 'actual' | 'potential')}
-                className="bg-gray-100 border-none text-[10px] font-bold text-church-green rounded-lg px-3 py-2 outline-none cursor-pointer hover:bg-gray-200 transition-colors"
-              >
-                <option value="all">ALL CATEGORIES</option>
-                <option value="actual">ACTUAL DONATIONS</option>
-                <option value="potential">PROJECTED POTENTIAL</option>
-              </select>
-            </CardHeader>
-            <CardContent className="p-6 lg:p-10">
-              <div className="space-y-6">
-                <div className="h-[350px] flex items-center">
-                  <div className="w-10 flex-shrink-0 flex items-center justify-center h-full">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] -rotate-90 whitespace-nowrap">{donationTrendsMode === 'performance' ? 'Performance (%)' : 'Amount (PHP)'}</span>
-                  </div>
-                  <div className="flex-1 h-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <ComposedChart data={dynamicDonationTrendsData} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
-                        <defs>
-                          <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#D4AF37" stopOpacity={1} />
-                            <stop offset="100%" stopColor="#B5952F" stopOpacity={0.8} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
-                        <XAxis 
-                          dataKey="name" 
-                          axisLine={{ stroke: '#E5E7EB' }} 
-                          tickLine={false} 
-                          tick={<CustomizedTick fontSize={10} />}
-                          interval={0}
-                          height={75}
-                        />
-                        <YAxis 
-                          axisLine={false} 
-                          tickLine={false} 
-                          tick={{ fill: '#6B7280', fontSize: 11 }} 
-                          tickFormatter={(value) => donationTrendsMode === 'performance' ? `${Number(value).toFixed(0)}%` : formatMillions(value)} 
-                          width={60} 
-                        />
-                        <Tooltip 
-                          cursor={{ fill: 'rgba(243, 244, 246, 0.5)' }} 
-                          contentStyle={{ 
-                            borderRadius: '12px', 
-                            border: 'none', 
-                            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
-                            padding: '12px'
-                          }} 
-                          formatter={(value: number, name: string) => [
-                            donationTrendsMode === 'performance' ? `${value.toFixed(2)}%` : formatCurrency(value), 
-                            name === 'barValue' || name === 'barPercentage'
-                              ? (donationTrendsMode === 'performance' ? 'Actual Share of Total Income' : 'Actual Donations')
-                              : (donationTrendsMode === 'performance' ? 'Potential Share of Total Income' : 'Projected Potential')
-                          ]}
-                        />
-                        <Legend 
-                          verticalAlign="top" 
-                          align="right"
-                          height={40}
-                          iconType="circle"
-                          wrapperStyle={{ paddingBottom: '20px', fontSize: '11px', fontWeight: '500' }}
-                          formatter={(value) =>
-                            value === 'barValue' || value === 'barPercentage'
-                              ? (donationTrendsMode === 'performance' ? 'Actual Share of Total Income' : 'Actual Donations')
-                              : (donationTrendsMode === 'performance' ? 'Potential Share of Total Income' : 'Projected Potential')
-                          }
-                        />
-                        {(donationTrendsFilter === 'all' || donationTrendsFilter === 'actual') && (
-                          <Bar 
-                            dataKey={donationTrendsMode === 'performance' ? 'barPercentage' : 'barValue'} 
-                            name={donationTrendsMode === 'performance' ? 'Actual Share of Total Income' : 'Actual Donations'}
-                            fill="url(#barGradient)" 
-                            radius={[6, 6, 0, 0]} 
-                            maxBarSize={45} 
-                            animationDuration={1500}
-                          />
-                        )}
-                        {(donationTrendsFilter === 'all' || donationTrendsFilter === 'potential') && (
-                          <Line 
-                            type="monotone" 
-                            dataKey={donationTrendsMode === 'performance' ? 'linePercentage' : 'lineValue'} 
-                            name={donationTrendsMode === 'performance' ? 'Potential Share of Total Income' : 'Projected Potential'}
-                            stroke="#1a472a" 
-                            strokeWidth={3} 
-                            dot={{ r: 4, fill: '#1a472a', strokeWidth: 2, stroke: '#fff' }}
-                            activeDot={{ r: 6, strokeWidth: 0 }}
-                            animationDuration={2000}
-                          />
-                        )}
-                      </ComposedChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-                <div className="text-center text-[10px] font-bold text-gray-400 uppercase tracking-[0.4em]">Priest Assignment</div>
-                <div className="flex items-center gap-6 justify-center mt-4">
-                  <div className={`flex items-center gap-2 transition-opacity ${donationTrendsFilter === 'all' || donationTrendsFilter === 'actual' ? 'opacity-100' : 'opacity-30'}`}>
-                    <div className="w-3 h-3 rounded-full bg-[#D4AF37]"></div>
-                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">{donationTrendsMode === 'performance' ? 'Actual Share of Total Income' : 'Actual Donations'}</span>
-                  </div>
-                  <div className={`flex items-center gap-2 transition-opacity ${donationTrendsFilter === 'all' || donationTrendsFilter === 'potential' ? 'opacity-100' : 'opacity-30'}`}>
-                    <div className="w-3 h-3 rounded-full bg-[#1a472a]"></div>
-                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">{donationTrendsMode === 'performance' ? 'Potential Share of Total Income' : 'Projected Potential'}</span>
-                  </div>
-                </div>
               </div>
             </CardContent>
           </Card>

@@ -1,14 +1,21 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import type { AccessRole, AppRole } from './lib/access';
 
 /** Mock user type for local-only authentication */
 export interface AuthUser {
   id?: string;
+  uid?: string;
   email?: string;
-  role?: 'bishop' | 'admin' | 'priest' | 'school' | 'seminary';
+  role?: AppRole;
+  accessRole?: AccessRole;
+  roleId?: AccessRole;
   entityName?: string;
   entityType?: string;
+  entityId?: string;
+  displayName?: string;
+  status?: string;
 }
 
 /** Auth state callback function type */

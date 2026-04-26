@@ -42,7 +42,8 @@ export const STATUS_LABELS = {
 export const ROLE_LABELS = {
   bishop: 'Bishop',
   admin: 'Administrator',
-  priest: 'Parish Priest',
+  parish_priest: 'Parish Priest',
+  parish_secretary: 'Parish Secretary',
   school: 'School',
   seminary: 'Seminary',
 } as const;
