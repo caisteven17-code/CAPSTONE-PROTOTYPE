@@ -147,6 +147,12 @@ export default function App() {
           return <HealthTracker />;
         case 'priest-aitwin':
           return <AITwin mode="priest" />;
+        case 'seminary-aitwin':
+          return <AITwin mode="seminary" />;
+        case 'school-aitwin':
+          return <AITwin mode="school" />;
+        case 'aitwin':
+          return <AITwin mode="parish" />;
         case 'seminaries':
           return <BishopDashboard initialEntityType="Seminaries" timeframe={timeframe} year={year} onYearChange={setYear} />;
         case 'school':
@@ -177,6 +183,12 @@ export default function App() {
           return <HealthTracker />;
         case 'priest-aitwin':
           return <AITwin mode="priest" />;
+        case 'seminary-aitwin':
+          return <AITwin mode="seminary" />;
+        case 'school-aitwin':
+          return <AITwin mode="school" />;
+        case 'aitwin':
+          return <AITwin mode={role === 'seminary' ? 'seminary' : role === 'school' ? 'school' : 'parish'} />;
         case 'seminaries':
           return <PriestDashboard role="seminary" timeframe={timeframe} year={year} onYearChange={setYear} onNavigate={setActiveTab} onLogout={handleLogout} />;
         case 'school':

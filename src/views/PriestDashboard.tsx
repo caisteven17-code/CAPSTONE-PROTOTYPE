@@ -305,7 +305,7 @@ export function PriestDashboard({
   const [enrollmentForecastFilter, setEnrollmentForecastFilter] = useState<'all' | 'enrollment' | 'capacity'>('all');
   const [ratioFilter, setRatioFilter] = useState<'all' | 'staff' | 'seminarians'>('all');
   const [clusteringFilter, setClusteringFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all');
-  const [optimizationFilter, setOptimizationFilter] = useState<'all' | 'personnel' | 'utilities' | 'programs'>('all');
+  const [optimizationFilter, setOptimizationFilter] = useState<'all' | 'medical aid' | 'food support' | 'emergency cash' | 'education aid'>('all');
   const [donationTrendsFilter, setDonationTrendsFilter] = useState<'all' | 'actual' | 'potential'>('all');
   const [donationTrendsMode, setDonationTrendsMode] = useState<'amount' | 'performance'>('performance');
   const [showPriestFilters, setShowPriestFilters] = useState(false);
@@ -633,10 +633,63 @@ export function PriestDashboard({
   ], []);
 
   const optimizationData = useMemo(() => [
-    { category: 'Personnel', current: 450000, optimized: 410000, savings: 40000 },
-    { category: 'Utilities', current: 120000, optimized: 95000, savings: 25000 },
-    { category: 'Programs', current: 280000, optimized: 250000, savings: 30000 },
-    { category: 'Maintenance', current: 150000, optimized: 135000, savings: 15000 },
+    { category: 'Medical Aid', current: 62000, optimized: 78000, savings: 0 },
+    { category: 'Food Support', current: 48000, optimized: 52000, savings: 0 },
+    { category: 'Emergency Cash', current: 35000, optimized: 28000, savings: 7000 },
+    { category: 'Education Aid', current: 22000, optimized: 26000, savings: 0 },
+  ], []);
+
+  const priestFinancialDecisionMetrics = useMemo(() => [
+    {
+      label: 'Available Aid Fund',
+      value: formatCurrency(185000),
+      note: 'Cash available for approved financial assistance',
+      trend: '+8.4%',
+      status: 'Stable',
+    },
+    {
+      label: 'Open Requests',
+      value: '34',
+      note: 'Food, medical, burial, education, and emergency cash',
+      trend: '+11',
+      status: 'Rising',
+    },
+    {
+      label: 'Projected Shortage',
+      value: formatCurrency(28000),
+      note: 'Forecasted gap if all high-priority cases are funded',
+      trend: '15.1%',
+      status: 'Watch',
+    },
+  ], []);
+
+  const financialForecastData = useMemo(() => [
+    { month: 'Jan', fundActual: 210000, fundForecast: 212000, requestActual: 18, requestForecast: 19 },
+    { month: 'Feb', fundActual: 198000, fundForecast: 200000, requestActual: 21, requestForecast: 22 },
+    { month: 'Mar', fundActual: 176000, fundForecast: 178000, requestActual: 28, requestForecast: 27 },
+    { month: 'Apr', fundActual: 190000, fundForecast: 188000, requestActual: 24, requestForecast: 25 },
+    { month: 'May', fundActual: 185000, fundForecast: 183000, requestActual: 34, requestForecast: 33 },
+    { month: 'Jun', fundActual: 0, fundForecast: 157000, requestActual: 0, requestForecast: 39 },
+  ], []);
+
+  const aidPriorityData = useMemo(() => [
+    { beneficiary: 'Maria Santos', risk: 'High', reason: 'Medical expense, no stable income, 5 dependents', action: 'Approve medical aid', amount: 12000 },
+    { beneficiary: 'Juan Reyes', risk: 'High', reason: 'Repeated food support requests and unpaid utilities', action: 'Approve food support and refer to livelihood', amount: 6500 },
+    { beneficiary: 'Ana Cruz', risk: 'Medium', reason: 'Education support request with partial family income', action: 'Fund partial education aid', amount: 5000 },
+    { beneficiary: 'Roberto Lim', risk: 'Medium', reason: 'Emergency cash request after temporary job loss', action: 'Cap emergency cash aid', amount: 3500 },
+  ], []);
+
+  const budgetAllocationData = useMemo(() => [
+    { category: 'Medical Aid', suggested: 78000, share: 42 },
+    { category: 'Food Support', suggested: 52000, share: 28 },
+    { category: 'Education Aid', suggested: 26000, share: 14 },
+    { category: 'Emergency Cash', suggested: 29000, share: 16 },
+  ], []);
+
+  const whatIfScenarios = useMemo(() => [
+    { scenario: 'Donations decrease by 10%', impact: 'Shortage grows to ₱46,500', decision: 'Reduce emergency cash cap and preserve medical aid' },
+    { scenario: 'Medical requests rise by 20%', impact: '8 additional cases need review', decision: 'Move ₱16,000 from discretionary programs to medical aid' },
+    { scenario: 'Aid cap set at ₱8,000 per case', impact: 'Supports 6 more beneficiaries', decision: 'Apply cap to medium-priority cases only' },
   ], []);
 
   const priestMedicalSubmissionQueue = useMemo(() => [
@@ -772,14 +825,14 @@ export function PriestDashboard({
                 <option value="specific">SPECIFIC FILTERED VIEW</option>
               </select>
 
-              <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Medical Queue</label>
+              <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Financial Risk</label>
               <select
                 value={medicalStatusFilter}
                 onChange={(e) => setMedicalStatusFilter(e.target.value as 'all' | 'urgent' | 'followup')}
                 className="bg-gray-100 border-none text-[10px] font-bold text-church-green rounded-lg px-3 py-2 outline-none cursor-pointer hover:bg-gray-200 transition-colors"
               >
-                <option value="all">ALL PENDING</option>
-                <option value="urgent">URGENT OVERDUE</option>
+                <option value="all">ALL REQUESTS</option>
+                <option value="urgent">HIGH RISK</option>
                 <option value="followup">FOLLOW-UP REQUIRED</option>
               </select>
             </div>
@@ -814,7 +867,7 @@ export function PriestDashboard({
                 {role === 'priest' && (
                   <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-1.5 shadow-sm flex items-center gap-1.5">
                     <AlertTriangle size={12} />
-                    Medical Results Follow-up
+                    Financial Decision Support
                   </span>
                 )}
               </div>
@@ -851,39 +904,41 @@ export function PriestDashboard({
               {role === 'priest' ? (
                 <>
                   <div className="flex items-center justify-between mb-1">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Medical Submission Tracking</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Financial Pipeline Snapshot</p>
                     <span className="text-[9px] bg-orange-50 text-orange-700 px-2 py-0.5 rounded-lg font-black uppercase tracking-wider border border-orange-100">
-                      Action Required
+                      Budget Watch
                     </span>
                   </div>
 
                   <p className="text-[10px] text-gray-500 font-semibold mb-2">
-                    Priests with pending medical results despite birth month already passed
+                    Data confirmed by the diocese, transformed into financial features, forecasts, and recommended actions.
                   </p>
 
                   <div className="max-h-[280px] overflow-y-auto pr-1 space-y-2">
-                    {priestsPendingMedicalResults.map((item) => (
-                      <div key={item.name} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100 group/item hover:bg-gold-50 transition-colors">
+                    {priestFinancialDecisionMetrics.map((item) => (
+                      <div key={item.label} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100 group/item hover:bg-gold-50 transition-colors">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm border border-gray-100 text-church-green">
-                            <HeartPulse size={16} />
+                            <FileText size={16} />
                           </div>
                           <div>
-                            <p className="text-base md:text-lg font-black text-black leading-tight">{item.name}</p>
+                            <p className="text-base md:text-lg font-black text-black leading-tight">{item.value}</p>
                             <p className="text-[11px] text-gray-500 font-black uppercase tracking-[0.12em]">
-                              {item.vicariate} • {item.priestClass}
+                              {item.label}
                             </p>
                             <p className="text-[11px] text-gray-600 font-semibold mt-0.5">
-                              Birth Month: {item.birthMonth} • Last Submitted: {item.lastSubmission}
+                              {item.note}
                             </p>
                           </div>
                         </div>
                         <span className={`text-[9px] px-2 py-0.5 rounded-lg font-black uppercase tracking-wider border ${
-                          item.category === 'urgent'
+                          item.status === 'Watch'
                             ? 'bg-red-50 text-red-700 border-red-100'
-                            : 'bg-orange-50 text-orange-700 border-orange-100'
+                            : item.status === 'Rising'
+                              ? 'bg-orange-50 text-orange-700 border-orange-100'
+                              : 'bg-emerald-50 text-emerald-700 border-emerald-100'
                         }`}>
-                          {item.category === 'urgent' ? 'URGENT' : 'FOLLOW-UP'}
+                          {item.trend}
                         </span>
                       </div>
                     ))}
@@ -1232,13 +1287,36 @@ export function PriestDashboard({
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.25em] text-gray-400">Descriptive Analytics</p>
-                <h3 className="text-lg font-black text-church-green">Priest Stewardship Current-State View</h3>
+                <h3 className="text-lg font-black text-church-green">Financial Decision Current-State View</h3>
               </div>
               <div className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-wide text-gray-500 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2">
                 <Target size={12} />
-                <span>Current performance, mix, and discipline</span>
+                <span>Funds, requests, aid mix, and budget discipline</span>
               </div>
             </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {priestFinancialDecisionMetrics.map((metric) => (
+              <div key={metric.label} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">{metric.label}</p>
+                    <p className="text-3xl font-black text-church-green mt-2">{metric.value}</p>
+                  </div>
+                  <span className={`text-[9px] px-2 py-1 rounded-lg font-black uppercase tracking-wider border ${
+                    metric.status === 'Watch'
+                      ? 'bg-red-50 text-red-700 border-red-100'
+                      : metric.status === 'Rising'
+                        ? 'bg-orange-50 text-orange-700 border-orange-100'
+                        : 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                  }`}>
+                    {metric.status}
+                  </span>
+                </div>
+                <p className="text-xs font-semibold text-gray-500 mt-3">{metric.note}</p>
+              </div>
+            ))}
           </div>
 
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
@@ -1482,33 +1560,113 @@ export function PriestDashboard({
         </div>
       )}
 
+      {analyticsView === 'predictive' && (
+        <div className="space-y-6">
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.25em] text-gray-400">Predictive Analytics</p>
+                <h3 className="text-lg font-black text-church-green">Financial Forecast and Priest Demand View</h3>
+              </div>
+              <div className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-wide text-gray-500 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2">
+                <BrainCircuit size={12} />
+                <span>Forecasts fund availability and assistance demand</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+              <div className="flex items-center justify-between mb-5">
+                <div>
+                  <h3 className="text-lg font-bold text-church-green">Available Fund Forecast</h3>
+                  <p className="text-xs font-semibold text-gray-500 mt-1">Historical fund balance with next-month forecast from the financial feature set.</p>
+                </div>
+              </div>
+              <AdvancedForecastChart
+                data={financialForecastData}
+                actualKey="fundActual"
+                forecastKey="fundForecast"
+                yAxisLabel="Fund"
+                title="Financial Forecast"
+                metrics={{ mae: 18500, rmse: 22400, mape: 8.7, mase: 0.42, wape: 7.9 }}
+              />
+            </div>
+
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+              <div className="flex items-center justify-between mb-5">
+                <div>
+                  <h3 className="text-lg font-bold text-church-green">Assistance Request Forecast</h3>
+                  <p className="text-xs font-semibold text-gray-500 mt-1">Priest-facing demand forecast for financial aid requests.</p>
+                </div>
+                <span className="text-[9px] bg-orange-50 text-orange-700 px-2 py-1 rounded-lg font-black uppercase tracking-wider border border-orange-100">
+                  +18% June
+                </span>
+              </div>
+              <div className="h-[320px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={financialForecastData} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                    <XAxis dataKey="month" tick={{ fill: '#6B7280', fontSize: 10 }} />
+                    <YAxis tick={{ fill: '#6B7280', fontSize: 10 }} width={40} />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="requestActual" name="Actual Requests" fill="#1a472a" radius={[4, 4, 0, 0]} />
+                    <Line type="monotone" dataKey="requestForecast" name="Forecast Requests" stroke="#D4AF37" strokeWidth={3} strokeDasharray="7 4" dot={{ r: 3 }} />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Projected June Fund</p>
+              <p className="text-3xl font-black text-church-green mt-2">{formatCurrency(157000)}</p>
+              <p className="text-xs font-semibold text-gray-500 mt-3">Expected balance after ordinary disbursements.</p>
+            </div>
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Expected Requests</p>
+              <p className="text-3xl font-black text-church-green mt-2">39</p>
+              <p className="text-xs font-semibold text-gray-500 mt-3">Forecasted financial assistance cases next month.</p>
+            </div>
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Shortage Risk</p>
+              <p className="text-3xl font-black text-red-600 mt-2">{formatCurrency(28000)}</p>
+              <p className="text-xs font-semibold text-gray-500 mt-3">Likely gap if all high-priority requests are approved in full.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {analyticsView === 'prescriptive' && (
         <div className="space-y-6">
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.25em] text-gray-400">Prescriptive Analytics</p>
-                <h3 className="text-lg font-black text-church-green">Priest Action Playbook</h3>
+                <h3 className="text-lg font-black text-church-green">Financial Assistance Action Playbook</h3>
               </div>
               <div className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-wide text-gray-500 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2">
                 <Zap size={12} />
-                <span>Recommended actions to improve stewardship</span>
+                <span>Recommended approvals, allocation, and what-if actions</span>
               </div>
             </div>
           </div>
 
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
             <div className="flex items-center justify-between mb-5">
-              <h3 className="text-lg font-bold text-church-green">Priest-Led Cost Optimization Opportunities</h3>
+              <h3 className="text-lg font-bold text-church-green">Recommended Budget Allocation</h3>
               <select
                 value={optimizationFilter}
-                onChange={(e) => setOptimizationFilter(e.target.value as 'all' | 'personnel' | 'utilities' | 'programs')}
+                onChange={(e) => setOptimizationFilter(e.target.value as 'all' | 'medical aid' | 'food support' | 'emergency cash' | 'education aid')}
                 className="bg-gray-100 border-none text-[10px] font-bold text-church-green rounded-lg px-3 py-2 outline-none cursor-pointer hover:bg-gray-200 transition-colors"
               >
                 <option value="all">ALL CATEGORIES</option>
-                <option value="personnel">PERSONNEL</option>
-                <option value="utilities">UTILITIES</option>
-                <option value="programs">PROGRAMS</option>
+                <option value="medical aid">MEDICAL AID</option>
+                <option value="food support">FOOD SUPPORT</option>
+                <option value="emergency cash">EMERGENCY CASH</option>
+                <option value="education aid">EDUCATION AID</option>
               </select>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -1520,37 +1678,81 @@ export function PriestDashboard({
                 .map((row) => (
                   <div key={row.category} className="p-4 rounded-xl bg-gray-50 border border-gray-100">
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-2">{row.category}</p>
-                    <p className="text-xs text-gray-500 font-bold">Current: {formatCurrency(row.current)}</p>
-                    <p className="text-xs text-gray-500 font-bold">Optimized: {formatCurrency(row.optimized)}</p>
-                    <p className="text-sm font-black text-emerald-700 mt-2">Savings: {formatCurrency(row.savings)}</p>
+                    <p className="text-xs text-gray-500 font-bold">Current Allocation: {formatCurrency(row.current)}</p>
+                    <p className="text-xs text-gray-500 font-bold">Recommended: {formatCurrency(row.optimized)}</p>
+                    <p className="text-sm font-black text-emerald-700 mt-2">
+                      {row.savings > 0 ? `Reallocate: ${formatCurrency(row.savings)}` : 'Protect budget'}
+                    </p>
                   </div>
                 ))}
             </div>
           </div>
 
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
-            <h3 className="text-lg font-bold text-church-green mb-5">Priest Seasonal Expense Risk Calendar</h3>
+            <h3 className="text-lg font-bold text-church-green mb-5">Financial Assistance Priority List</h3>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 border-b border-gray-100">
-                    <th className="py-3 pr-4">Event</th>
-                    <th className="py-3 pr-4">Month</th>
-                    <th className="py-3 pr-4">Expected Increase</th>
-                    <th className="py-3">Primary Cost Driver</th>
+                    <th className="py-3 pr-4">Beneficiary</th>
+                    <th className="py-3 pr-4">Risk</th>
+                    <th className="py-3 pr-4">Reason</th>
+                    <th className="py-3 pr-4">Recommended Action</th>
+                    <th className="py-3 text-right">Amount</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {seasonalExpenseSpikes.map((item) => (
-                    <tr key={item.event} className="border-b border-gray-50">
-                      <td className="py-3 pr-4 font-bold text-church-green">{item.event}</td>
-                      <td className="py-3 pr-4 text-gray-600 font-semibold">{item.month}</td>
-                      <td className="py-3 pr-4 text-orange-700 font-bold">{item.expectedIncrease}</td>
-                      <td className="py-3 text-gray-600">{item.driver}</td>
+                  {aidPriorityData.map((item) => (
+                    <tr key={item.beneficiary} className="border-b border-gray-50">
+                      <td className="py-3 pr-4 font-bold text-church-green">{item.beneficiary}</td>
+                      <td className="py-3 pr-4">
+                        <span className={`text-[9px] px-2 py-1 rounded-lg font-black uppercase tracking-wider border ${
+                          item.risk === 'High'
+                            ? 'bg-red-50 text-red-700 border-red-100'
+                            : 'bg-orange-50 text-orange-700 border-orange-100'
+                        }`}>
+                          {item.risk}
+                        </span>
+                      </td>
+                      <td className="py-3 pr-4 text-gray-600 font-semibold">{item.reason}</td>
+                      <td className="py-3 pr-4 text-gray-600">{item.action}</td>
+                      <td className="py-3 text-right font-black text-church-green">{formatCurrency(item.amount)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+              <h3 className="text-lg font-bold text-church-green mb-5">Allocation Share Recommendation</h3>
+              <div className="space-y-4">
+                {budgetAllocationData.map((item) => (
+                  <div key={item.category}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-black uppercase tracking-wide text-gray-600">{item.category}</span>
+                      <span className="text-xs font-black text-church-green">{formatCurrency(item.suggested)} · {item.share}%</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+                      <div className="h-full rounded-full bg-gold-500" style={{ width: `${item.share}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+              <h3 className="text-lg font-bold text-church-green mb-5">AI Twin What-if Analysis</h3>
+              <div className="space-y-3">
+                {whatIfScenarios.map((item) => (
+                  <div key={item.scenario} className="p-4 rounded-xl bg-gray-50 border border-gray-100">
+                    <p className="text-xs font-black text-church-green">{item.scenario}</p>
+                    <p className="text-xs font-bold text-orange-700 mt-1">{item.impact}</p>
+                    <p className="text-xs text-gray-600 font-semibold mt-2">{item.decision}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>

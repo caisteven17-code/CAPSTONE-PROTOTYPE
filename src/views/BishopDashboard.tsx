@@ -388,6 +388,37 @@ const seasonalExpenseSpikes = [
   { event: 'Christmas (Dec)', expectedSpike: '+40%', primaryDrivers: 'Bonuses, decorations, charity outreach' },
 ];
 
+const parishSeasonalRecommendations = [
+  {
+    season: 'Holy Week',
+    window: 'March to April',
+    signal: '+25% expense pressure',
+    recommendation: 'Pre-approve liturgical supply, utilities, and crowd-control budgets 30 days before Holy Week; defer non-urgent repairs until after Easter cash collections are posted.',
+    action: 'Reserve 8-10% of Q1 unrestricted cash'
+  },
+  {
+    season: 'Patronal Fiesta',
+    window: 'May parish fiesta cycle',
+    signal: '+15% activity costs',
+    recommendation: 'Set a fiesta spending cap per parish class and require separate tracking for donations, sponsorships, food, decorations, and guest-priest stipends.',
+    action: 'Use sponsorship-first funding'
+  },
+  {
+    season: 'Lean Giving Months',
+    window: 'June to September',
+    signal: 'Lower post-fiesta liquidity',
+    recommendation: 'Pause discretionary purchases, bundle maintenance work by vicariate, and schedule donor follow-ups before school-year expenses absorb household cash.',
+    action: 'Protect 2 months operating runway'
+  },
+  {
+    season: 'Advent and Christmas',
+    window: 'November to December',
+    signal: '+40% expense and giving uplift',
+    recommendation: 'Separate Simbang Gabi, bonus, decoration, and charity outreach budgets so Christmas collection uplift is not consumed before January obligations.',
+    action: 'Ring-fence January payroll and utilities'
+  }
+];
+
 const VICARIATE_TO_DISTRICT: Record<string, string> = {
   'Holy Family': 'District I',
   'San Isidro Labrador': 'District I',
@@ -3465,6 +3496,35 @@ export function BishopDashboard({
                 </CardContent>
               </Card>
             </div>
+
+            {entityType === 'Parishes' && (
+              <Card className="border-none shadow-sm mt-6">
+                <CardHeader>
+                  <p className="text-[10px] font-bold tracking-widest uppercase text-gold-500">SEASONAL PRESCRIPTIVE PLAN</p>
+                  <h3 className="text-2xl font-bold text-church-black">Parish Seasonal Recommendations</h3>
+                </CardHeader>
+                <CardContent className="space-y-4 mt-4">
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                    {parishSeasonalRecommendations.map((item) => (
+                      <div key={item.season} className="bg-gray-50 border border-gray-100 rounded-xl p-5">
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <h4 className="font-bold text-church-black text-sm">{item.season}</h4>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">{item.window}</p>
+                          </div>
+                          <span className="bg-gold-500/10 text-gold-700 px-3 py-1 rounded-md text-[10px] font-black whitespace-nowrap">{item.signal}</span>
+                        </div>
+                        <p className="text-xs text-gray-600 font-semibold leading-relaxed mt-4">{item.recommendation}</p>
+                        <div className="mt-4 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-church-black">
+                          <Sparkles className="w-3.5 h-3.5 text-gold-500" />
+                          {item.action}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
               {/* Disbursements Optimization */}
@@ -3475,7 +3535,6 @@ export function BishopDashboard({
                 </CardHeader>
                 <CardContent className="space-y-4 mt-4">
                   {[
-                    { name: 'Centralized Purchasing', desc: 'Implement a diocesan-wide procurement system for common supplies (candles, hosts, office materials) to leverage bulk pricing.', impact: '10-15% Savings' },
                     { name: 'Pastoral Program Synergy', desc: 'Encourage neighboring parishes within vicariates to co-host large pastoral events and training seminars to share costs.', impact: '20% Cost Reduction per Event' },
                     { name: 'Preventative Maintenance', desc: 'Establish a mandatory quarterly maintenance schedule for all parish facilities to reduce emergency repair disbursements.', impact: 'Long-term Stability' },
                   ].map((item, i) => (

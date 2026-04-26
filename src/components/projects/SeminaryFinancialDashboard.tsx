@@ -318,7 +318,7 @@ export function SeminaryFinancialDashboard({ entityName, year }: { entityName: s
     return { source: key, mean: Math.round(average(values)), stdDev: Math.round(standardDeviation(values)), fill: palette[index % palette.length] };
   }), [monthlyData, palette]);
 
-  const enrollmentSimulationData = useMemo(() => {
+  const enrollmentDigitalTwinData = useMemo(() => {
     const perStudentRevenue = average(monthlyData.map((record) => record.income['Seminary Fees'] / record.enrollment));
     const baselineEnrollment = latest.enrollment;
     return [0, 10, 20, 30].map((uplift, index) => ({
@@ -335,7 +335,7 @@ export function SeminaryFinancialDashboard({ entityName, year }: { entityName: s
     return monthlyData.map((record, index) => ({ month: record.month, Spend: spend[index], 'Rolling Avg': Math.round(avg[index]) }));
   }, [monthlyData]);
 
-  const subsidyRiskSimulationData = useMemo(() => {
+  const subsidyRiskDigitalTwinData = useMemo(() => {
     const baselineSubsidy = annualIncomeTotals['Subsidy from RCBSP'];
     const baselineIncome = Object.values(annualIncomeTotals).reduce((sum, value) => sum + value, 0);
     const baselineExpense = Object.values(annualExpenseTotals).reduce((sum, value) => sum + value, 0);
@@ -715,17 +715,17 @@ export function SeminaryFinancialDashboard({ entityName, year }: { entityName: s
             </div>
           </ChartCard>
 
-          <ChartCard title="Enrollment Simulation" subtitle="Fee income impact under baseline and enrollment growth scenarios.">
+          <ChartCard title="Enrollment Digital Twin" subtitle="Fee income impact under baseline and enrollment growth scenarios.">
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={enrollmentSimulationData} margin={chartMargin}>
+                <BarChart data={enrollmentDigitalTwinData} margin={chartMargin}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                   <XAxis dataKey="scenario" label={{ value: 'Enrollment Scenario', position: 'insideBottom', offset: -8 }} />
                   <YAxis tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} label={{ value: 'Projected Fee Income (PHP)', angle: -90, position: 'insideLeft' }} />
                   <Tooltip formatter={(value: number, name: string) => name === 'enrollment' ? numberFormatter(value) : currencyFormatter(value)} />
                   <Legend />
                   <Bar dataKey="income" name="Projected Income" radius={[10, 10, 0, 0]}>
-                    {enrollmentSimulationData.map((entry) => <Cell key={entry.scenario} fill={entry.fill} />)}
+                    {enrollmentDigitalTwinData.map((entry) => <Cell key={entry.scenario} fill={entry.fill} />)}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
@@ -748,10 +748,10 @@ export function SeminaryFinancialDashboard({ entityName, year }: { entityName: s
             </div>
           </ChartCard>
 
-          <ChartCard title="Subsidy Risk Simulation" subtitle="Impact on annual income and surplus if RCBSP subsidy is reduced.">
+          <ChartCard title="Subsidy Risk Digital Twin" subtitle="Impact on annual income and surplus if RCBSP subsidy is reduced.">
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={subsidyRiskSimulationData} margin={chartMargin}>
+                <BarChart data={subsidyRiskDigitalTwinData} margin={chartMargin}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                   <XAxis dataKey="scenario" label={{ value: 'RCBSP Cut Scenario', position: 'insideBottom', offset: -8 }} />
                   <YAxis tickFormatter={(value) => `${Math.round(Number(value) / 1000000)}M`} label={{ value: 'Annual PHP', angle: -90, position: 'insideLeft' }} />

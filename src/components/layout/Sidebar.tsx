@@ -46,11 +46,15 @@ export function Sidebar({
   const [showTimeframeDropdown, setShowTimeframeDropdown] = React.useState(false);
   const [showParishDropdown, setShowParishDropdown] = React.useState(activeTab.startsWith('parish'));
   const [showPriestDropdown, setShowPriestDropdown] = React.useState(activeTab.startsWith('priest'));
+  const [showSeminaryDropdown, setShowSeminaryDropdown] = React.useState(activeTab === 'seminaries' || activeTab.startsWith('seminary'));
+  const [showSchoolDropdown, setShowSchoolDropdown] = React.useState(activeTab === 'school' || activeTab.startsWith('school'));
 
   // Auto-expand dropdowns for their active sections
   React.useEffect(() => {
     setShowParishDropdown(activeTab.startsWith('parish'));
     setShowPriestDropdown(activeTab.startsWith('priest'));
+    setShowSeminaryDropdown(activeTab === 'seminaries' || activeTab.startsWith('seminary'));
+    setShowSchoolDropdown(activeTab === 'school' || activeTab.startsWith('school'));
   }, [activeTab]);
 
   /**
@@ -63,19 +67,27 @@ export function Sidebar({
 
   const parishSubtabs = [
     { id: 'parish-dashboard', label: 'Dashboard', icon: BarChart3, section: 'PARISH' },
-    { id: 'parish-aitwin', label: 'Simulation', icon: Zap, section: 'PARISH' },
+    { id: 'parish-aitwin', label: 'Digital Twin', icon: Zap, section: 'PARISH' },
   ];
 
   const priestSubtabs = [
     { id: 'priest-dashboard', label: 'Dashboard', icon: BarChart3 },
     { id: 'priest-health', label: 'Health Tracker', icon: Heart, section: 'PRIEST' },
-    { id: 'priest-aitwin', label: 'Simulation', icon: Zap, section: 'PRIEST' },
+    { id: 'priest-aitwin', label: 'Digital Twin', icon: Zap, section: 'PRIEST' },
+  ];
+
+  const seminarySubtabs = [
+    { id: 'seminaries', label: 'Dashboard', icon: BarChart3, section: 'SEMINARY' },
+    { id: 'seminary-aitwin', label: 'Digital Twin', icon: Zap, section: 'SEMINARY' },
+  ];
+
+  const schoolSubtabs = [
+    { id: 'school', label: 'Dashboard', icon: BarChart3, section: 'SCHOOL' },
+    { id: 'school-aitwin', label: 'Digital Twin', icon: Zap, section: 'SCHOOL' },
   ];
 
   const navItems = [
     { id: 'home', label: 'Home', icon: Home },
-    { id: 'seminaries', label: 'Seminaries', icon: BookOpen },
-    { id: 'school', label: 'Schools', icon: GraduationCap },
     { id: 'projects', label: 'Projects', icon: Briefcase },
     { id: 'announcements', label: 'Announcements', icon: Bell },
   ];
@@ -245,6 +257,140 @@ export function Sidebar({
               >
                 <div className="py-1">
                   {priestSubtabs.map((subtab) => {
+                    const SubIcon = subtab.icon;
+                    const isActive = activeTab === subtab.id;
+                    return (
+                      <button
+                        key={subtab.id}
+                        onClick={() => onNavigate(subtab.id)}
+                        className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-all duration-300 group text-sm ${
+                          isActive
+                            ? 'bg-white/10 text-gold-400'
+                            : 'text-white/40 hover:bg-white/5 hover:text-white/60'
+                        }`}
+                      >
+                        <SubIcon className={`w-3.5 h-3.5 ${isActive ? 'text-gold-400' : 'text-white/20'}`} />
+                        <span className="font-medium tracking-wide">{subtab.label}</span>
+                        {isActive && (
+                          <div className="ml-auto w-1 h-1 bg-gold-400 rounded-full" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Seminaries Dropdown */}
+        <div>
+          <div className={`w-full flex items-center gap-3 rounded-xl transition-all duration-300 ${
+            activeTab === 'seminaries' || activeTab.startsWith('seminary')
+              ? 'bg-white/10 text-gold-400 shadow-sm'
+              : 'text-white/50'
+          }`}>
+            <button
+              onClick={() => {
+                onNavigate('seminaries');
+                setShowSeminaryDropdown(false);
+              }}
+              className="flex-1 flex items-center gap-3 px-4 py-3 hover:text-white transition-colors group"
+            >
+              <BookOpen className={`w-4 h-4 transition-colors ${activeTab === 'seminaries' || activeTab.startsWith('seminary') ? 'text-gold-400' : 'text-white/20 group-hover:text-white/40'}`} />
+              <span className="text-xs font-bold tracking-wide">Seminaries</span>
+            </button>
+
+            <button
+              onClick={() => setShowSeminaryDropdown(!showSeminaryDropdown)}
+              className="px-3 py-3 hover:bg-white/10 rounded-r-xl transition-colors"
+            >
+              <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${showSeminaryDropdown ? 'rotate-180' : ''}`} />
+            </button>
+
+            {(activeTab === 'seminaries' || activeTab.startsWith('seminary')) && (
+              <div className="absolute right-3 w-1.5 h-1.5 bg-gold-400 rounded-full shadow-[0_0_8px_rgba(212,175,55,0.6)]" />
+            )}
+          </div>
+
+          <AnimatePresence>
+            {showSeminaryDropdown && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+                className="space-y-0 mt-1 pl-6"
+              >
+                <div className="py-1">
+                  {seminarySubtabs.map((subtab) => {
+                    const SubIcon = subtab.icon;
+                    const isActive = activeTab === subtab.id;
+                    return (
+                      <button
+                        key={subtab.id}
+                        onClick={() => onNavigate(subtab.id)}
+                        className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-all duration-300 group text-sm ${
+                          isActive
+                            ? 'bg-white/10 text-gold-400'
+                            : 'text-white/40 hover:bg-white/5 hover:text-white/60'
+                        }`}
+                      >
+                        <SubIcon className={`w-3.5 h-3.5 ${isActive ? 'text-gold-400' : 'text-white/20'}`} />
+                        <span className="font-medium tracking-wide">{subtab.label}</span>
+                        {isActive && (
+                          <div className="ml-auto w-1 h-1 bg-gold-400 rounded-full" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Schools Dropdown */}
+        <div>
+          <div className={`w-full flex items-center gap-3 rounded-xl transition-all duration-300 ${
+            activeTab === 'school' || activeTab.startsWith('school')
+              ? 'bg-white/10 text-gold-400 shadow-sm'
+              : 'text-white/50'
+          }`}>
+            <button
+              onClick={() => {
+                onNavigate('school');
+                setShowSchoolDropdown(false);
+              }}
+              className="flex-1 flex items-center gap-3 px-4 py-3 hover:text-white transition-colors group"
+            >
+              <GraduationCap className={`w-4 h-4 transition-colors ${activeTab === 'school' || activeTab.startsWith('school') ? 'text-gold-400' : 'text-white/20 group-hover:text-white/40'}`} />
+              <span className="text-xs font-bold tracking-wide">Schools</span>
+            </button>
+
+            <button
+              onClick={() => setShowSchoolDropdown(!showSchoolDropdown)}
+              className="px-3 py-3 hover:bg-white/10 rounded-r-xl transition-colors"
+            >
+              <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${showSchoolDropdown ? 'rotate-180' : ''}`} />
+            </button>
+
+            {(activeTab === 'school' || activeTab.startsWith('school')) && (
+              <div className="absolute right-3 w-1.5 h-1.5 bg-gold-400 rounded-full shadow-[0_0_8px_rgba(212,175,55,0.6)]" />
+            )}
+          </div>
+
+          <AnimatePresence>
+            {showSchoolDropdown && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+                className="space-y-0 mt-1 pl-6"
+              >
+                <div className="py-1">
+                  {schoolSubtabs.map((subtab) => {
                     const SubIcon = subtab.icon;
                     const isActive = activeTab === subtab.id;
                     return (
