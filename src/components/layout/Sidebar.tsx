@@ -115,7 +115,7 @@ export function Sidebar({
   return (
     <aside className="hidden md:flex flex-col w-64 bg-[#07090f] text-white h-screen sticky top-0 left-0 z-40 shadow-2xl border-r border-white/5">
       {/* Navigation Section */}
-      <nav className="flex-1 px-3 pt-5 space-y-5">
+      <nav className="flex-1 px-3 py-5 space-y-3">
         {topNavItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
@@ -140,7 +140,7 @@ export function Sidebar({
         })}
 
         {/* Parishes Dropdown */}
-        <div className="pt-1">
+        <div>
           <div className={`relative w-full flex items-center gap-3 rounded-full transition-all duration-300 ${
             activeTab.startsWith('parish')
               ? 'bg-white/10 text-gold-400 shadow-[0_10px_30px_rgba(255,255,255,0.06)]'
@@ -179,7 +179,7 @@ export function Sidebar({
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
                 transition={{ duration: 0.2 }}
-                className="space-y-1 mt-2 pl-6"
+                className="space-y-1 mt-1 pl-6"
               >
                 <div className="py-1">
                   {parishSubtabs.map((subtab) => {
@@ -211,7 +211,7 @@ export function Sidebar({
 
         {/* Priest Dropdown */}
         {canViewPriestSection && (
-          <div className="pt-4">
+          <div>
             <div className={`relative w-full flex items-center gap-3 rounded-full transition-all duration-300 ${
               activeTab.startsWith('priest')
                 ? 'bg-white/10 text-gold-400 shadow-[0_10px_30px_rgba(255,255,255,0.06)]'
@@ -247,7 +247,7 @@ export function Sidebar({
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
                   transition={{ duration: 0.2 }}
-                  className="space-y-1 mt-2 pl-6"
+                  className="space-y-1 mt-1 pl-6"
                 >
                   <div className="py-1">
                     {priestSubtabs.map((subtab) => {

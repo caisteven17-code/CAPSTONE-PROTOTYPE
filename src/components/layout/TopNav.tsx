@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { BarChart3, Bell, Calendar, ChevronDown, Church, Check, User } from 'lucide-react';
 
 import { Role, Timeframe } from '../../App';
+import { APP_CONFIG } from '../../constants';
 
 interface TopNavProps {
   onNavigate?: (page: string) => void;
@@ -166,18 +167,35 @@ export function TopNav({
 
   if (role === 'bishop' || role === 'admin') {
     return (
-      <header className="bg-black text-white border-b border-white/5 sticky top-0 z-30 h-16 flex items-center w-full">
-        <div className="flex items-center justify-between w-full px-8">
-          {/* Left Side: Empty (Logo moved to sidebar) */}
-          <div></div>
+      <header className="bg-black text-white border-b border-white/5 sticky top-0 z-30 h-20 flex items-center w-full">
+        <div className="flex w-full items-center justify-between gap-8 px-8">
+          <button
+            onClick={() => onNavigate?.('home')}
+            className="flex items-center gap-4 text-left"
+            aria-label="Go to home"
+          >
+            <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] shadow-lg">
+              <img
+                src={APP_CONFIG.logoPath}
+                alt="Diocese of San Pablo"
+                className="h-8 w-8 object-contain"
+              />
+            </span>
+            <span className="flex min-w-0 flex-col">
+              <span className="text-[10px] font-black uppercase tracking-[0.35em] text-white/35">
+                Diocese of
+              </span>
+              <span className="font-serif text-sm font-bold uppercase tracking-wide text-gold-400">
+                San Pablo
+              </span>
+            </span>
+          </button>
 
-          
-          {/* Right Side: Actions */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center justify-end gap-5">
             <div className="relative">
               <button 
                 onClick={() => setShowTimeframeDropdown(!showTimeframeDropdown)}
-                className="flex items-center gap-2 bg-white/5 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-white/10 transition-colors border border-white/10"
+                className="flex h-12 items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-5 text-sm font-bold text-white transition-colors hover:bg-white/10"
               >
                 <Calendar className="w-4 h-4 text-white/40" />
                 <span className="hidden sm:inline">{timeframeLabels[timeframe]}</span>
@@ -202,39 +220,9 @@ export function TopNav({
               )}
             </div>
 
-            <div className="relative">
-              <button 
-                onClick={() => setIsYearOpen(!isYearOpen)}
-                className="flex items-center gap-2 bg-white/5 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-white/10 transition-colors border border-white/10"
-              >
-                <span>{year}</span>
-                <ChevronDown className={`w-4 h-4 text-white/40 transition-transform ${isYearOpen ? 'rotate-180' : ''}`} />
-              </button>
-
-              {isYearOpen && (
-                <div className="absolute right-0 mt-2 w-32 bg-black/95 rounded-2xl shadow-xl border border-gold-500/30 py-2 z-[60] animate-in fade-in zoom-in duration-200">
-                  {[2026, 2025, 2024, 2023, 2022].map((y) => (
-                    <button
-                      key={y}
-                      onClick={() => {
-                        onYearChange?.(y);
-                        setIsYearOpen(false);
-                      }}
-                      className="w-full px-4 py-2.5 text-left text-xs font-bold hover:bg-white/5 flex items-center justify-between transition-colors text-white"
-                    >
-                      <span className={year === y ? 'text-gold-500' : 'text-gray-300'}>
-                        {y}
-                      </span>
-                      {year === y && <Check className="w-4 h-4 text-gold-500" />}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
             <button
               onClick={() => onAccountSettings?.()}
-              className="w-10 h-10 bg-gold-500 text-black rounded-full flex items-center justify-center hover:bg-gold-600 transition-colors cursor-pointer shadow-lg shadow-gold-500/20 border border-gold-600 shrink-0"
+              className="flex h-12 w-12 shrink-0 cursor-pointer items-center justify-center rounded-full border border-gold-600 bg-gold-500 text-black shadow-lg shadow-gold-500/20 transition-colors hover:bg-gold-600"
               aria-label="Open account settings"
             >
               <User className="w-5 h-5" />
