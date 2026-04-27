@@ -12,7 +12,6 @@ import {
   FunnelChart, Funnel, LabelList, ReferenceArea, ReferenceLine
 } from 'recharts';
 import { ALL_PARISHES, APP_CONFIG, VICARIATES } from '../constants';
-import { PriestDashboard } from './PriestDashboard';
 import dynamic from 'next/dynamic';
 const GeospatialHeatMap = dynamic(
   () => import('../components/ui/GeospatialHeatMap').then(mod => ({ default: mod.GeospatialHeatMap })),
@@ -26,7 +25,7 @@ import { HealthDimensionBar } from '../components/ui/HealthDimensionBar';
 import { DiagnosticCard } from '../components/ui/DiagnosticCard';
 import { StewardChatbot } from '../components/ui/StewardChatbot';
 import { motion, AnimatePresence } from 'motion/react';
-import { formatCurrency, formatNumber, formatMillions } from '../lib/format';
+import { formatCurrency, formatNumber } from '../lib/format';
 import SeminaryAnalyticsDashboard from '../components/analytics/SeminaryAnalyticsDashboard';
 
 
@@ -44,6 +43,27 @@ const topTierParishesData = [
   { rank: 3, name: 'Mary Help of Christians Parish', location: 'SAN PABLO', class: 'Class D' },
   { rank: 4, name: 'Chair of St. Peter Parish', location: 'SAN PABLO', class: 'Class A' },
   { rank: 5, name: 'St. John Bosco Parish', location: 'SAN PABLO', class: 'Class B' },
+];
+
+const contributionData = [
+  { name: 'Holy Family', value: 12 },
+  { name: 'San Isidro Labrador', value: 15 },
+  { name: 'San Pedro Apostol', value: 10 },
+  { name: 'Sta. Rosa De Lima', value: 8 },
+  { name: 'St. Polycarp', value: 8 },
+  { name: 'St. John the Baptist', value: 12 },
+  { name: 'Immaculate Conception', value: 7 },
+  { name: 'St. Paul the First Hermit', value: 9 },
+  { name: 'San Bartolome', value: 6 },
+  { name: 'San Antonio De Padua', value: 5 },
+  { name: 'Our Lady of Guadalupe', value: 4 },
+  { name: 'St. James', value: 3 },
+  { name: 'Sts. Peter and Paul', value: 1 },
+];
+const CONTRIBUTION_COLORS = [
+  '#1a472a', '#D4AF37', '#4ade80', '#E6C27A', '#3d6e36',
+  '#B5952F', '#4e8245', '#8B7522', '#5f9654', '#70aa63',
+  '#81be72', '#92d281'
 ];
 
 const seasonalityData = [
@@ -164,17 +184,44 @@ const AdvancedForecastChart = ({
     wape: 19.72,
     mpe: 4.46
   }
-}: { 
-  data: any[], 
-  actualKey: string, 
-  forecastKey: string, 
+}: {
+  data: any[],
+  actualKey: string,
+  forecastKey: string,
   yAxisLabel: string,
   title: string,
   metrics?: any
 }) => {
+  const [showInterpretation, setShowInterpretation] = useState(false);
+  const isCollections = actualKey === 'collections';
   const pastEnd = 'Aug';
   const presentEnd = 'Oct';
   const futureEnd = 'Dec';
+
+  const insights = useMemo(() => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const presentIndex = months.indexOf(presentEnd);
+    const lastActual = data[presentIndex];
+    const lastActualVal: number = lastActual?.[actualKey] ?? 0;
+    const prevActual = data[presentIndex - 1];
+    const prevActualVal: number = prevActual?.[actualKey] ?? 0;
+    const lastMonthChange = prevActualVal > 0 ? ((lastActualVal - prevActualVal) / prevActualVal * 100) : 0;
+    const futureForecast = data.slice(presentIndex + 1);
+    const nextMonthData = futureForecast[0];
+    const nextMonthVal: number = nextMonthData?.[forecastKey] ?? 0;
+    const nextMonthName: string = nextMonthData?.month ?? 'Nov';
+    const nextMonthChange = lastActualVal > 0 ? ((nextMonthVal - lastActualVal) / lastActualVal * 100) : 0;
+    const lastForecastData = futureForecast[futureForecast.length - 1];
+    const lastForecastVal: number = lastForecastData?.[forecastKey] ?? 0;
+    const lastForecastName: string = lastForecastData?.month ?? 'Dec';
+    const actualData = data.slice(0, presentIndex + 1).filter(d => d[actualKey] != null);
+    const peakMonth = actualData.reduce((max: any, d: any) => (d[actualKey] ?? 0) > (max[actualKey] ?? 0) ? d : max, actualData[0]);
+    const avgActual = actualData.reduce((sum: number, d: any) => sum + (d[actualKey] ?? 0), 0) / (actualData.length || 1);
+    const decAboveAvg = lastForecastVal > 0 ? ((lastForecastVal - avgActual) / avgActual * 100) : 0;
+    const fmt = (v: number) => `₱${(v / 1_000_000).toFixed(2)}M`;
+    const pct = (v: number) => `${v > 0 ? '+' : ''}${v.toFixed(1)}%`;
+    return { lastActualVal, prevActualVal, lastMonthChange, nextMonthName, nextMonthVal, nextMonthChange, lastForecastName, lastForecastVal, peakMonth, avgActual, decAboveAvg, fmt, pct };
+  }, [data, actualKey, forecastKey, presentEnd]);
 
   // Process data to ensure historical line stops at present, and forecast starts at present
   const processedData = useMemo(() => {
@@ -297,12 +344,27 @@ const AdvancedForecastChart = ({
           </table>
         </div>
       </div>
-      <div className="mt-4 flex items-center justify-center gap-4">
-        <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-200 to-transparent"></div>
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">
-          {title} — Predictive Analytics Engine v2.4
-        </p>
-        <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-200 to-transparent"></div>
+      <div className="mt-4 border border-gray-100 rounded-xl overflow-hidden">
+        <button
+          onClick={() => setShowInterpretation(prev => !prev)}
+          className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">How to Read This Chart</span>
+            <span className="text-[9px] font-bold text-church-green bg-church-green/10 px-2 py-0.5 rounded-full uppercase tracking-wider">Plain Language</span>
+          </div>
+          <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-300 ${showInterpretation ? 'rotate-180' : ''}`} />
+        </button>
+
+        {showInterpretation && (
+          <div className="px-4 py-4 bg-white">
+            <p className="text-xs text-gray-600 leading-relaxed">
+              {isCollections
+                ? `Looking at the graph, the parish started the year collecting around ${insights.fmt(insights.prevActualVal > 0 ? insights.prevActualVal : insights.lastActualVal)} per month. Collections jumped significantly in April — this is expected every year because of Holy Week, when church attendance and giving are at their highest. After April, the numbers settled back to a normal range through mid-year. As of October, the parish collected ${insights.fmt(insights.lastActualVal)}, and the model predicts this will continue to rise — reaching around ${insights.fmt(insights.nextMonthVal)} in ${insights.nextMonthName} and peaking at ${insights.fmt(insights.lastForecastVal)} in ${insights.lastForecastName} due to the Christmas season. The gold dashed line (the forecast) runs close to the actual green line throughout the year, which means the model's predictions are accurate and can be trusted for planning.`
+                : `Looking at the graph, the parish's spending follows a clear pattern throughout the year. Expenses were relatively moderate in the early months but spiked in April due to Holy Week activities and programs. Spending then stabilized through mid-year. As of October, disbursements reached ${insights.fmt(insights.lastActualVal)}, and the model projects costs will rise to ${insights.fmt(insights.nextMonthVal)} in ${insights.nextMonthName} and peak at ${insights.fmt(insights.lastForecastVal)} in ${insights.lastForecastName} — the highest point of the year, driven by Christmas programs, year-end bonuses, and parish events. The gold dashed line (the forecast) closely tracks the actual spending line, which means the projections are reliable enough to use for budget planning.`}
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -352,37 +414,6 @@ const seasonalExpenseSpikes = [
   { event: 'Fiesta Season (May)', expectedSpike: '+15%', primaryDrivers: 'Decorations, food, community events' },
   { event: 'Back to School (Aug)', expectedSpike: '+10%', primaryDrivers: 'Scholarships, school subsidies' },
   { event: 'Christmas (Dec)', expectedSpike: '+40%', primaryDrivers: 'Bonuses, decorations, charity outreach' },
-];
-
-const parishSeasonalRecommendations = [
-  {
-    season: 'Holy Week',
-    window: 'March to April',
-    signal: '+25% expense pressure',
-    recommendation: 'Pre-approve liturgical supply, utilities, and crowd-control budgets 30 days before Holy Week; defer non-urgent repairs until after Easter cash collections are posted.',
-    action: 'Reserve 8-10% of Q1 unrestricted cash'
-  },
-  {
-    season: 'Patronal Fiesta',
-    window: 'May parish fiesta cycle',
-    signal: '+15% activity costs',
-    recommendation: 'Set a fiesta spending cap per parish class and require separate tracking for donations, sponsorships, food, decorations, and guest-priest stipends.',
-    action: 'Use sponsorship-first funding'
-  },
-  {
-    season: 'Lean Giving Months',
-    window: 'June to September',
-    signal: 'Lower post-fiesta liquidity',
-    recommendation: 'Pause discretionary purchases, bundle maintenance work by vicariate, and schedule donor follow-ups before school-year expenses absorb household cash.',
-    action: 'Protect 2 months operating runway'
-  },
-  {
-    season: 'Advent and Christmas',
-    window: 'November to December',
-    signal: '+40% expense and giving uplift',
-    recommendation: 'Separate Simbang Gabi, bonus, decoration, and charity outreach budgets so Christmas collection uplift is not consumed before January obligations.',
-    action: 'Ring-fence January payroll and utilities'
-  }
 ];
 
 const VICARIATE_TO_DISTRICT: Record<string, string> = {
@@ -586,6 +617,8 @@ class ChartErrorBoundary extends React.Component<{children: React.ReactNode}, {h
 
 interface BishopDashboardProps {
   initialEntityType?: string;
+  initialEntityFilter?: string;
+  lockEntityFilter?: boolean;
   timeframe?: Timeframe;
   year?: number;
   onYearChange?: (year: number) => void;
@@ -623,6 +656,8 @@ const CustomizedTick = (props: any) => {
 
 export function BishopDashboard({ 
   initialEntityType = 'Parishes', 
+  initialEntityFilter,
+  lockEntityFilter = false,
   timeframe = '6m',
   year = 2026,
   onYearChange,
@@ -690,11 +725,24 @@ export function BishopDashboard({
   const [districtFilter, setDistrictFilter] = useState('All Districts');
   const [vicariateFilter, setVicariateFilter] = useState('All Vicariates');
   const [classFilter, setClassFilter] = useState('All Classes');
-  const [entityFilter, setEntityFilter] = useState('All Entities');
-  const [filterMode, setFilterMode] = useState<'all' | 'per-entity'>('all');
+  const [entityFilter, setEntityFilter] = useState(initialEntityFilter || 'All Entities');
+  const [filterMode, setFilterMode] = useState<'all' | 'per-entity'>(initialEntityFilter ? 'per-entity' : 'all');
+  const [contributionView, setContributionView] = useState<'entity' | 'vicariate'>('vicariate');
+  const [selectedVicariate, setSelectedVicariate] = useState<string | null>(null);
   const [selectedBarVicariate, setSelectedBarVicariate] = useState<string | null>(null);
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
+  const [contributionSortOrder, setContributionSortOrder] = useState<'desc' | 'asc'>('desc');
   const [showFilters, setShowFilters] = useState(false);
+  const [forecastTab, setForecastTab] = useState<'collections' | 'disbursements'>('collections');
+
+  useEffect(() => {
+    if (!initialEntityFilter) return;
+    setEntityFilter(initialEntityFilter);
+    setFilterMode('per-entity');
+    setDistrictFilter('All Districts');
+    setVicariateFilter('All Vicariates');
+    setClassFilter('All Classes');
+  }, [initialEntityFilter]);
 
   const vocationSourceData = [
     { name: 'Parish Youth Groups', value: 45 },
@@ -703,6 +751,55 @@ export function BishopDashboard({
     { name: 'Direct Applications', value: 10 },
   ];
   const VOCATION_SOURCE_COLORS = ['#1a472a', '#D4AF37', '#4ade80', '#E6C27A'];
+
+  const contributionData = useMemo(() => {
+    const entities = getEntitiesData(entityType);
+    
+    if (contributionView === 'entity') {
+      const total = entities.reduce((sum, p) => sum + (p.collections || 0), 0);
+      const data = entities.map(p => ({
+        name: p.name,
+        value: total > 0 ? Math.round(((p.collections || 0) / total) * 100) : 0,
+        actualValue: p.collections || 0
+      }));
+      return contributionSortOrder === 'asc' ? data.sort((a, b) => a.actualValue - b.actualValue).slice(0, 10) : data.sort((a, b) => b.actualValue - a.actualValue).slice(0, 10);
+    }
+    
+    // Calculate dynamic contribution based on entities
+    const vicariateTotals: Record<string, number> = {};
+    entities.forEach(p => {
+      const v = p.vicariate || 'Other';
+      vicariateTotals[v] = (vicariateTotals[v] || 0) + (p.collections || 0);
+    });
+    
+    const total = Object.values(vicariateTotals).reduce((a, b) => a + b, 0);
+    
+    const data = Object.entries(vicariateTotals).map(([name, value]) => ({
+      name,
+      value: total > 0 ? Math.round((value / total) * 100) : 0,
+      actualValue: value
+    }));
+    return contributionSortOrder === 'asc' ? data.sort((a, b) => a.actualValue - b.actualValue) : data.sort((a, b) => b.actualValue - a.actualValue);
+  }, [entityType, contributionView, contributionSortOrder]);
+
+  useEffect(() => {
+    setSelectedVicariate(null);
+  }, [contributionView, entityType]);
+
+  const parishContributionData = useMemo(() => {
+    if (!selectedVicariate) return [];
+    
+    const entities = getEntitiesData(entityType);
+    const entitiesInVicariate = entities.filter(p => p.vicariate === selectedVicariate);
+    const total = entitiesInVicariate.reduce((sum, p) => sum + (p.collections || 0), 0);
+    
+    const data = entitiesInVicariate.map(p => ({
+      name: p.name,
+      value: total > 0 ? Math.round(((p.collections || 0) / total) * 100) : 0,
+      actualValue: p.collections || 0
+    }));
+    return contributionSortOrder === 'asc' ? data.sort((a, b) => a.actualValue - b.actualValue) : data.sort((a, b) => b.actualValue - a.actualValue);
+  }, [selectedVicariate, contributionSortOrder, entityType]);
 
   const filteredTrendData = useMemo(() => {
     if (timeframe === '6m') return trendData.slice(-6);
@@ -859,15 +956,16 @@ export function BishopDashboard({
   }, [filteredEntities, currentEntities, filteredSeasonalityData]);
 
   const kpiData = useMemo(() => {
-    const totalCollections = records.length > 0 
+    const useFilteredEntityTotals = entityFilter !== 'All Entities' || records.length === 0;
+    const totalCollections = !useFilteredEntityTotals
       ? records.reduce((sum, e) => sum + (e.collections || 0), 0)
       : filteredEntities.reduce((sum, e) => sum + e.collections, 0);
     
-    const totalConsumable = records.length > 0
+    const totalConsumable = !useFilteredEntityTotals
       ? records.reduce((sum, e) => sum + (e.consumableCollections || 0), 0)
       : totalCollections * 0.22;
       
-    const totalDisbursements = records.length > 0
+    const totalDisbursements = !useFilteredEntityTotals
       ? records.reduce((sum, e) => sum + (e.disbursements || 0), 0)
       : totalCollections * 0.76;
     
@@ -890,7 +988,7 @@ export function BishopDashboard({
       classBreakdown: classBreakdown || 'None',
       totalEnrollment: formatNumber(filteredEntities.reduce((sum, e) => sum + (e.enrollment || 0), 0))
     };
-  }, [filteredEntities, records]);
+  }, [entityFilter, filteredEntities, records]);
 
   const districts = useMemo(() => ['All Districts', ...new Set(currentEntities.map(p => p.district))].sort(), [currentEntities]);
   const vicariates = useMemo(() => {
@@ -979,14 +1077,18 @@ export function BishopDashboard({
             <div className="flex items-center gap-2 md:gap-6 flex-1 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] pb-1 md:pb-0">
               <div className="flex items-center bg-white/5 border border-white/10 rounded-xl p-1 shrink-0">
                 <button
+                  disabled={lockEntityFilter}
                   onClick={() => {
+                    if (lockEntityFilter) return;
                     setFilterMode('all');
                     setEntityFilter('All Entities');
                   }}
                   className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all duration-300 whitespace-nowrap ${
                     filterMode === 'all' 
                       ? 'bg-gold-500 text-black shadow-lg' 
-                      : 'text-white/40 hover:text-white hover:bg-white/5'
+                      : lockEntityFilter
+                        ? 'text-white/20 cursor-not-allowed'
+                        : 'text-white/40 hover:text-white hover:bg-white/5'
                   }`}
                 >
                   All
@@ -1061,8 +1163,13 @@ export function BishopDashboard({
                   <div className="relative group min-w-[150px]">
                     <select 
                       value={entityFilter}
-                      onChange={(e) => setEntityFilter(e.target.value)}
-                      className="w-full bg-transparent text-xs md:text-sm font-medium hover:text-gold-400 transition-colors appearance-none pr-6 cursor-pointer focus:outline-none"
+                      onChange={(e) => {
+                        if (!lockEntityFilter) setEntityFilter(e.target.value);
+                      }}
+                      disabled={lockEntityFilter}
+                      className={`w-full bg-transparent text-xs md:text-sm font-medium transition-colors appearance-none pr-6 focus:outline-none ${
+                        lockEntityFilter ? 'text-gold-300 cursor-default' : 'hover:text-gold-400 cursor-pointer'
+                      }`}
                     >
                       {entityNames.map(p => <option key={p} value={p} className="bg-church-green">{p}</option>)}
                     </select>
@@ -1084,17 +1191,7 @@ export function BishopDashboard({
         </div>
       </div>
 
-      {entityFilter !== 'All Entities' && entityType !== 'Parishes' ? (
-        <PriestDashboard 
-          isEmbedded={true} 
-          role={entityType === 'Parishes' ? 'priest' : entityType === 'Seminaries' ? 'seminary' : 'school'}
-          entityName={entityFilter}
-          entityType={currentEntities.find(e => e.name === entityFilter)?.vicariate || 'Vicariate'}
-          entityClass={currentEntities.find(e => e.name === entityFilter)?.class || 'Class'}
-          timeframe={timeframe}
-        />
-      ) : (
-        <>
+      <>
           {/* Welcome & Alerts Row */}
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Welcome Card */}
@@ -1247,85 +1344,16 @@ export function BishopDashboard({
         </Card>
       </div>
 
-      {/* Financial Health Overview (Moved here) */}
-      <div className="grid grid-cols-1 gap-6">
-        <Card className="border-none shadow-xl bg-white overflow-hidden group relative">
-          <div className="absolute top-0 left-0 w-1.5 h-full bg-gold-500 z-10"></div>
-          <div className="absolute top-0 right-0 w-64 h-64 bg-gold-500/5 rounded-full -mr-32 -mt-32 blur-3xl group-hover:bg-gold-500/10 transition-colors duration-700"></div>
-          <CardHeader className="pb-2 relative z-20">
-            <div className="flex justify-between items-start">
-              <div className="space-y-2">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gold-500 text-black flex items-center justify-center shadow-lg shadow-gold-500/20">
-                    <HeartPulse size={20} />
-                  </div>
-                  <h3 className="text-2xl font-black text-church-green tracking-tight uppercase">Financial Health Overview</h3>
-                  <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-emerald-100 shadow-sm">
-                    <TrendingUp size={12} />
-                    <span>{trendText} Trend</span>
-                  </div>
-                </div>
-                <p className="text-sm text-gray-400 font-medium ml-13">Composite analysis across {filteredHealthScores.length} {entityType.toLowerCase()} {filteredHealthScores.length === healthScores.length ? 'in the diocese' : 'in the selected filter'}</p>
-              </div>
-              <div className="flex flex-col items-end bg-gray-50 px-4 py-2 rounded-2xl border border-gray-100">
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Last Updated</span>
-                <span className="text-xs font-black text-church-green">{new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-6 relative z-20">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-              <div className="lg:col-span-5 flex flex-col items-center justify-center relative">
-                <div className="absolute inset-0 bg-radial-gradient from-gold-500/10 to-transparent opacity-50 blur-2xl"></div>
-                <FinancialHealthGauge 
-                  score={averageScore} 
-                  size={220} 
-                  description={`The diocese is currently in the ${trendText} Zone. Resource allocation is being monitored.`}
-                />
-              </div>
-              <div className="lg:col-span-7">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-3">
-                  <div className="sm:col-span-2 mb-1 flex items-center justify-between">
-                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em]">Health Dimensions</h4>
-                    <div className="h-px flex-1 bg-gradient-to-r from-gray-100 to-transparent mx-4"></div>
-                  </div>
-                  <HealthDimensionBar label="Liquidity" score={averageDimensions.liquidity} weight={30} />
-                  <HealthDimensionBar label="Sustainability" score={averageDimensions.sustainability} weight={25} />
-                  <HealthDimensionBar label="Efficiency" score={averageDimensions.efficiency} weight={20} />
-                  <HealthDimensionBar label="Stability" score={averageDimensions.stability} weight={15} />
-                  <div className="sm:col-span-2">
-                    <HealthDimensionBar label="Growth" score={averageDimensions.growth} weight={10} />
-                  </div>
-                </div>
-                
-                <div className="mt-6 p-4 bg-gradient-to-br from-church-green/5 to-transparent rounded-3xl border border-church-green/10 flex items-start gap-4 relative overflow-hidden group/note">
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-church-green/5 rounded-full -mr-12 -mt-12 blur-2xl group-hover/note:bg-church-green/10 transition-colors"></div>
-                  <div className="w-12 h-12 rounded-2xl bg-gold-500 text-black flex items-center justify-center shrink-0 shadow-xl shadow-gold-500/20 transform group-hover/note:rotate-6 transition-transform">
-                    <BrainCircuit size={24} />
-                  </div>
-                  <div className="relative z-10">
-                    <h5 className="text-[10px] font-black text-church-green uppercase tracking-[0.2em] mb-1.5">Steward's Insight</h5>
-                    <p className="text-sm text-gray-600 leading-relaxed font-medium">
-                      "While overall health is strong, the <span className="text-church-green font-black">Growth</span> dimension has dipped by 3% this quarter. Consider reviewing the vicariate contribution trends in the Diagnostic tab."
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
       {/* KPIs Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="border-none shadow-xl bg-white overflow-hidden group relative hover:-translate-y-1 transition-all duration-500">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+        <Card className="border-none shadow-xl bg-white overflow-hidden group relative hover:-translate-y-1 transition-all duration-500 min-w-0 min-h-[150px] p-0">
           <div className="absolute top-0 right-0 w-24 h-24 bg-church-green/5 rounded-full -mr-12 -mt-12 blur-2xl group-hover:bg-church-green/10 transition-colors"></div>
-          <CardHeader className="pb-0 items-start relative z-10 p-4">
-            <CardTitle className="text-gray-400 text-[11px] font-black uppercase tracking-[0.2em] min-h-[30px] leading-tight">Monthly Total <br/>Collections</CardTitle>
+          <CardHeader className="pb-0 mb-0 items-start relative z-10 px-6 pt-4">
+            <CardTitle className="text-gray-400 text-[11px] font-black uppercase tracking-[0.2em] leading-tight">Monthly Total Collections</CardTitle>
           </CardHeader>
-          <CardContent className="pt-1 px-4 pb-4 flex flex-col items-start relative z-10">
-            <div className="text-3xl md:text-4xl font-black text-church-green tracking-tighter mb-4 relative z-10 group-hover:scale-105 transition-transform origin-left duration-500">{kpiData.collections}</div>
-            <div className="flex items-center justify-between w-full mt-4">
+          <CardContent className="px-6 pb-4 pt-2 flex flex-col items-start relative z-10 min-w-0">
+            <div className="w-full whitespace-nowrap text-[clamp(1.25rem,1.55vw,1.8rem)] font-black text-church-green tracking-tight mb-2.5 relative z-10 group-hover:scale-[1.01] transition-transform origin-left duration-500">{kpiData.collections}</div>
+            <div className="flex items-center justify-between w-full mt-auto">
               <div className="flex items-center gap-2">
                 <span className="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg text-[10px] font-black border border-emerald-100 shadow-sm">
                   <ArrowUpRight className="w-3 h-3" /> +12.5%
@@ -1343,14 +1371,14 @@ export function BishopDashboard({
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-xl bg-white overflow-hidden group relative hover:-translate-y-1 transition-all duration-500">
+        <Card className="border-none shadow-xl bg-white overflow-hidden group relative hover:-translate-y-1 transition-all duration-500 min-w-0 min-h-[150px] p-0">
           <div className="absolute top-0 right-0 w-24 h-24 bg-gold-500/5 rounded-full -mr-12 -mt-12 blur-2xl group-hover:bg-gold-500/10 transition-colors"></div>
-          <CardHeader className="pb-0 items-start relative z-10 p-4">
-            <CardTitle className="text-gray-400 text-[11px] font-black uppercase tracking-[0.2em] min-h-[30px] leading-tight">Consumable <br/>Collections</CardTitle>
+          <CardHeader className="pb-0 mb-0 items-start relative z-10 px-6 pt-4">
+            <CardTitle className="text-gray-400 text-[11px] font-black uppercase tracking-[0.2em] leading-tight">Consumable Collections</CardTitle>
           </CardHeader>
-          <CardContent className="pt-1 px-4 pb-4 flex flex-col items-start relative z-10">
-            <div className="text-3xl md:text-4xl font-black text-church-green tracking-tighter mb-4 relative z-10 group-hover:scale-105 transition-transform origin-left duration-500">{kpiData.consumable}</div>
-            <div className="flex items-center gap-2 mt-4">
+          <CardContent className="px-6 pb-4 pt-2 flex flex-col items-start relative z-10 min-w-0">
+            <div className="w-full whitespace-nowrap text-[clamp(1.25rem,1.55vw,1.8rem)] font-black text-church-green tracking-tight mb-2.5 relative z-10 group-hover:scale-[1.01] transition-transform origin-left duration-500">{kpiData.consumable}</div>
+            <div className="flex items-center gap-2 mt-auto">
               <span className="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg text-[10px] font-black border border-emerald-100 shadow-sm">
                 <ArrowUpRight className="w-3 h-3" /> +8.1%
               </span>
@@ -1359,14 +1387,14 @@ export function BishopDashboard({
           </CardContent>
         </Card>
         
-        <Card className="border-none shadow-xl bg-white overflow-hidden group relative hover:-translate-y-1 transition-all duration-500">
+        <Card className="border-none shadow-xl bg-white overflow-hidden group relative hover:-translate-y-1 transition-all duration-500 min-w-0 min-h-[150px] p-0">
           <div className="absolute top-0 right-0 w-24 h-24 bg-red-500/5 rounded-full -mr-12 -mt-12 blur-2xl group-hover:bg-red-500/10 transition-colors"></div>
-          <CardHeader className="pb-0 items-start relative z-10 p-4">
-            <CardTitle className="text-gray-400 text-[11px] font-black uppercase tracking-[0.2em] min-h-[30px] leading-tight">Monthly <br/>Disbursements</CardTitle>
+          <CardHeader className="pb-0 mb-0 items-start relative z-10 px-6 pt-4">
+            <CardTitle className="text-gray-400 text-[11px] font-black uppercase tracking-[0.2em] leading-tight">Monthly Disbursements</CardTitle>
           </CardHeader>
-          <CardContent className="pt-1 px-4 pb-4 flex flex-col items-start relative z-10">
-            <div className="text-3xl md:text-4xl font-black text-church-green tracking-tighter mb-4 relative z-10 group-hover:scale-105 transition-transform origin-left duration-500">{kpiData.disbursements}</div>
-            <div className="flex items-center gap-2 mt-4">
+          <CardContent className="px-6 pb-4 pt-2 flex flex-col items-start relative z-10 min-w-0">
+            <div className="w-full whitespace-nowrap text-[clamp(1.25rem,1.55vw,1.8rem)] font-black text-church-green tracking-tight mb-2.5 relative z-10 group-hover:scale-[1.01] transition-transform origin-left duration-500">{kpiData.disbursements}</div>
+            <div className="flex items-center gap-2 mt-auto">
               <span className="flex items-center gap-1 bg-red-50 text-red-700 px-2.5 py-1 rounded-lg text-[10px] font-black border border-red-100 shadow-sm">
                 <ArrowUp className="w-3 h-3" /> +5.2%
               </span>
@@ -1375,24 +1403,21 @@ export function BishopDashboard({
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-xl bg-white overflow-hidden group relative hover:-translate-y-1 transition-all duration-500">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full -mr-12 -mt-12 blur-2xl group-hover:bg-blue-500/10 transition-colors"></div>
-          <CardHeader className="pb-0 items-start relative z-10 p-4">
-            <CardTitle className="text-gray-400 text-[11px] font-black uppercase tracking-[0.2em] min-h-[30px] leading-tight">
-              {entityType === 'Seminaries' ? (
-                <>Total <br/>Enrollment</>
-              ) : (
-                <>Entities <br/>By Class</>
-              )}
-            </CardTitle>
+        <Card className="border-none shadow-xl bg-white overflow-hidden group relative hover:-translate-y-1 transition-all duration-500 min-w-0 min-h-[150px] p-0">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-gold-500/5 rounded-full -mr-12 -mt-12 blur-2xl group-hover:bg-gold-500/10 transition-colors"></div>
+          <CardHeader className="pb-0 mb-0 items-start relative z-10 px-6 pt-4">
+            <CardTitle className="text-gray-400 text-[11px] font-black uppercase tracking-[0.2em] leading-tight">Financial Health Score</CardTitle>
           </CardHeader>
-          <CardContent className="pt-1 px-4 pb-4 flex flex-col items-start">
-            <div className="text-3xl md:text-4xl font-black text-church-green tracking-tighter mb-4 relative z-10 group-hover:scale-105 transition-transform origin-left duration-500">
-              {entityType === 'Seminaries' ? kpiData.totalEnrollment : kpiData.count}
+          <CardContent className="px-6 pb-4 pt-2 flex flex-col items-start min-w-0">
+            <div className="text-[clamp(2rem,2.5vw,2.65rem)] font-black text-gold-600 tracking-tight mb-2.5 relative z-10 group-hover:scale-[1.02] transition-transform origin-left duration-500">
+              {averageScore}
             </div>
-            <div className="flex items-center gap-2 mt-2">
-              <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded-md text-xs font-bold">
-                {entityType === 'Seminaries' ? 'Active Students' : kpiData.classBreakdown}
+            <div className="flex flex-wrap items-center gap-2 mt-auto">
+              <span className="bg-gold-50 text-gold-700 px-2.5 py-1 rounded-lg text-[10px] font-black border border-gold-100">
+                {trendText} Zone
+              </span>
+              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                Diagnostic
               </span>
             </div>
           </CardContent>
@@ -1449,7 +1474,76 @@ export function BishopDashboard({
       {/* Diagnostic View Content */}
       {analyticsView === 'health' && (
         <div className="space-y-6 animate-in fade-in duration-500">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-6">
+            <Card className="border-none shadow-xl bg-white overflow-hidden group relative">
+              <div className="absolute top-0 left-0 w-1.5 h-full bg-gold-500 z-10"></div>
+              <div className="absolute top-0 right-0 w-64 h-64 bg-gold-500/5 rounded-full -mr-32 -mt-32 blur-3xl group-hover:bg-gold-500/10 transition-colors duration-700"></div>
+              <CardHeader className="pb-2 relative z-20">
+                <div className="flex justify-between items-start">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-gold-500 text-black flex items-center justify-center shadow-lg shadow-gold-500/20">
+                        <HeartPulse size={20} />
+                      </div>
+                      <h3 className="text-2xl font-black text-church-green tracking-tight uppercase">Financial Health Overview</h3>
+                      <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-emerald-100 shadow-sm">
+                        <TrendingUp size={12} />
+                        <span>{trendText} Trend</span>
+                      </div>
+                    </div>
+                    <p className="text-sm text-gray-400 font-medium ml-13">Composite analysis across {filteredHealthScores.length} {entityType.toLowerCase()} {filteredHealthScores.length === healthScores.length ? 'in the diocese' : 'in the selected filter'}</p>
+                  </div>
+                  <div className="flex flex-col items-end bg-gray-50 px-4 py-2 rounded-2xl border border-gray-100">
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Last Updated</span>
+                    <span className="text-xs font-black text-church-green">{new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-6 relative z-20">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+                  <div className="lg:col-span-5 flex flex-col items-center justify-center relative">
+                    <div className="absolute inset-0 bg-radial-gradient from-gold-500/10 to-transparent opacity-50 blur-2xl"></div>
+                    <FinancialHealthGauge
+                      score={averageScore}
+                      size={220}
+                      description={`The diocese is currently in the ${trendText} Zone. Resource allocation is being monitored.`}
+                    />
+                  </div>
+                  <div className="lg:col-span-7">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-3">
+                      <div className="sm:col-span-2 mb-1 flex items-center justify-between">
+                        <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em]">Health Dimensions</h4>
+                        <div className="h-px flex-1 bg-gradient-to-r from-gray-100 to-transparent mx-4"></div>
+                      </div>
+                      <HealthDimensionBar label="Liquidity" score={averageDimensions.liquidity} weight={30} />
+                      <HealthDimensionBar label="Sustainability" score={averageDimensions.sustainability} weight={25} />
+                      <HealthDimensionBar label="Efficiency" score={averageDimensions.efficiency} weight={20} />
+                      <HealthDimensionBar label="Stability" score={averageDimensions.stability} weight={15} />
+                      <div className="sm:col-span-2">
+                        <HealthDimensionBar label="Growth" score={averageDimensions.growth} weight={10} />
+                      </div>
+                    </div>
+
+                    <div className="mt-6 p-4 bg-gradient-to-br from-church-green/5 to-transparent rounded-3xl border border-church-green/10 flex items-start gap-4 relative overflow-hidden group/note">
+                      <div className="absolute top-0 right-0 w-24 h-24 bg-church-green/5 rounded-full -mr-12 -mt-12 blur-2xl group-hover/note:bg-church-green/10 transition-colors"></div>
+                      <div className="w-12 h-12 rounded-2xl bg-gold-500 text-black flex items-center justify-center shrink-0 shadow-xl shadow-gold-500/20 transform group-hover/note:rotate-6 transition-transform">
+                        <BrainCircuit size={24} />
+                      </div>
+                      <div className="relative z-10">
+                        <h5 className="text-[10px] font-black text-church-green uppercase tracking-[0.2em] mb-1.5">Steward's Insight</h5>
+                        <p className="text-sm text-gray-600 leading-relaxed font-medium">
+                          "While overall health is strong, the <span className="text-church-green font-black">Growth</span> dimension has dipped by 3% this quarter. Consider reviewing the vicariate contribution trends in the Diagnostic tab."
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className={`grid grid-cols-1 ${filterMode !== 'per-entity' ? 'lg:grid-cols-3' : ''} gap-6`}>
+            {filterMode !== 'per-entity' && (
             <Card className="lg:col-span-2 border-none shadow-sm">
               <CardHeader>
                 <h3 className="text-2xl font-bold text-church-green uppercase tracking-wide">Entity Health Rankings</h3>
@@ -1484,6 +1578,7 @@ export function BishopDashboard({
                 </div>
               </CardContent>
             </Card>
+            )}
 
             <Card className="border-none shadow-sm bg-church-black text-white overflow-hidden relative">
               <div className="absolute top-0 right-0 p-8 opacity-10">
@@ -1817,178 +1912,6 @@ export function BishopDashboard({
             </>
           ) : (
             <>
-              {/* Row 1: Collections Per Entity */}
-              <Card className="border-none shadow-md overflow-hidden">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-6 px-8">
-                  <div className="flex items-center gap-4">
-                    {selectedBarVicariate && (
-                      <button 
-                        onClick={() => setSelectedBarVicariate(null)}
-                        className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                        title="Back to Vicariates"
-                      >
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-                      </button>
-                    )}
-                    <div>
-                      <h3 className="text-3xl font-extrabold text-gray-900 uppercase tracking-tight">
-                        {selectedBarVicariate 
-                          ? `COLLECTIONS / RECEIPTS & DISBURSEMENTS IN ${stripVicariatePrefix(selectedBarVicariate)}` 
-                          : `COLLECTIONS / RECEIPTS & DISBURSEMENTS BY ${entityType === 'Parishes' ? 'VICARIATE' : entityType === 'Seminaries' ? 'SEMINARY' : 'VICARIATE'}`}
-                      </h3>
-                      {selectedBarVicariate && <p className="text-sm text-gray-500 font-medium mt-1">Detailed Parish Breakdown</p>}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <select 
-                      value={collectionsDisbursementsFilter}
-                      onChange={(e) => setCollectionsDisbursementsFilter(e.target.value as any)}
-                      className="bg-gray-100 border-none text-[10px] font-bold text-church-green rounded-lg px-3 py-2 outline-none cursor-pointer hover:bg-gray-200 transition-colors"
-                    >
-                      <option value="all">ALL CATEGORIES</option>
-                      <option value="collections">COLLECTIONS</option>
-                      <option value="disbursements">DISBURSEMENTS</option>
-                    </select>
-                  </div>
-                </CardHeader>
-                <CardContent className="mt-4 px-8 pb-4">
-                  <div className="h-[400px] w-full mt-4">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart 
-                        data={barChartData} 
-                        margin={{ top: 20, right: 30, left: 40, bottom: 20 }}
-                        barCategoryGap="15%"
-                      >
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} horizontal={true} stroke="#F3F4F6" />
-                        <XAxis 
-                          dataKey="name" 
-                          axisLine={{ stroke: '#E5E7EB', strokeWidth: 1 }} 
-                          tickLine={true} 
-                          tick={<CustomizedTick fontSize={11} />}
-                          interval={0}
-                          height={75}
-                        />
-                        <YAxis 
-                          axisLine={{ stroke: '#E5E7EB', strokeWidth: 1 }} 
-                          tickLine={true} 
-                          tick={{ fill: '#9CA3AF', fontSize: 11, fontWeight: 500 }} 
-                          tickFormatter={(value) => value === 0 ? '0' : `${Math.round(value / 1000000)}M`}
-                          domain={[0, (dataMax: number) => dataMax * 1.15]}
-                          label={{ 
-                            value: 'Amount (PHP)', 
-                            angle: -90, 
-                            position: 'insideLeft', 
-                            style: { textAnchor: 'middle', fill: '#9CA3AF', fontSize: 10, fontWeight: 'bold', letterSpacing: '0.1em' },
-                            offset: -20
-                          }}
-                        />
-                        <Tooltip 
-                          cursor={{ fill: '#F9FAFB' }} 
-                          formatter={(value: number, name: string) => {
-                            const label = name === 'collections' ? (selectedBarVicariate ? 'Parish Collections' : 'Vicariate Collections') : 'Disbursements';
-                            return [formatCurrency(value), label];
-                          }}
-                          contentStyle={{ 
-                            borderRadius: '16px', 
-                            border: 'none', 
-                            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
-                            padding: '12px 16px'
-                          }} 
-                        />
-                        <Legend verticalAlign="top" height={36} iconType="circle" />
-                        {(collectionsDisbursementsFilter === 'all' || collectionsDisbursementsFilter === 'collections') && (
-                          <Bar 
-                            dataKey="collections" 
-                            name="collections"
-                            fill="#D4AF37" 
-                            radius={[8, 8, 0, 0]} 
-                            maxBarSize={40} 
-                            onClick={(data) => {
-                              if (!selectedBarVicariate && data && data.name && entityType !== 'Seminaries') {
-                                setSelectedBarVicariate(data.name);
-                              }
-                              if (data && data.name) {
-                                handleDiagnosticRequest(data.name);
-                              }
-                            }}
-                            className={!selectedBarVicariate && entityType !== 'Seminaries' ? "cursor-pointer hover:opacity-90 transition-all duration-300" : ""}
-                          >
-                            <LabelList 
-                              dataKey="collections" 
-                              position="top" 
-                              content={(props: any) => {
-                                const { x, y, width, value } = props;
-                                if (!value || value === 0) return null;
-                                return (
-                                  <g>
-                                    <text x={x + width / 2} y={y - 22} fill="#9CA3AF" textAnchor="middle" fontSize={9} fontWeight="bold">
-                                      PHP
-                                    </text>
-                                    <text x={x + width / 2} y={y - 10} fill="#9CA3AF" textAnchor="middle" fontSize={9} fontWeight="bold">
-                                      {(value / 1000000).toFixed(1)}M
-                                    </text>
-                                  </g>
-                                );
-                              }}
-                            />
-                          </Bar>
-                        )}
-                        {(collectionsDisbursementsFilter === 'all' || collectionsDisbursementsFilter === 'disbursements') && (
-                          <Bar 
-                            dataKey="disbursements" 
-                            name="disbursements"
-                            fill="#1a472a" 
-                            radius={[8, 8, 0, 0]} 
-                            maxBarSize={40} 
-                            onClick={(data) => {
-                              if (!selectedBarVicariate && data && data.name && entityType !== 'Seminaries') {
-                                setSelectedBarVicariate(data.name);
-                              }
-                              if (data && data.name) {
-                                handleDiagnosticRequest(data.name);
-                              }
-                            }}
-                            className={!selectedBarVicariate && entityType !== 'Seminaries' ? "cursor-pointer hover:opacity-90 transition-all duration-300" : ""}
-                          >
-                            <LabelList 
-                              dataKey="disbursements" 
-                              position="top" 
-                              content={(props: any) => {
-                                const { x, y, width, value } = props;
-                                if (!value || value === 0) return null;
-                                return (
-                                  <g>
-                                    <text x={x + width / 2} y={y - 22} fill="#9CA3AF" textAnchor="middle" fontSize={9} fontWeight="bold">
-                                      PHP
-                                    </text>
-                                    <text x={x + width / 2} y={y - 10} fill="#9CA3AF" textAnchor="middle" fontSize={9} fontWeight="bold">
-                                      {(value / 1000000).toFixed(1)}M
-                                    </text>
-                                  </g>
-                                );
-                              }}
-                            />
-                          </Bar>
-                        )}
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div className="flex items-center gap-6 justify-center mt-4">
-                    <div className={`flex items-center gap-2 transition-opacity ${collectionsDisbursementsFilter === 'all' || collectionsDisbursementsFilter === 'collections' ? 'opacity-100' : 'opacity-30'}`}>
-                      <div className="w-3 h-3 rounded-full bg-[#D4AF37]"></div>
-                      <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Collections</span>
-                    </div>
-                    <div className={`flex items-center gap-2 transition-opacity ${collectionsDisbursementsFilter === 'all' || collectionsDisbursementsFilter === 'disbursements' ? 'opacity-100' : 'opacity-30'}`}>
-                      <div className="w-3 h-3 rounded-full bg-[#1a472a]"></div>
-                      <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Disbursements</span>
-                    </div>
-                  </div>
-                  <div className="text-center mt-2 text-[11px] font-bold text-gray-400 uppercase tracking-[0.4em]">
-                    {selectedBarVicariate ? 'Parish' : (entityType === 'Parishes' ? 'Vicariate' : entityType === 'Seminaries' ? 'Seminary' : 'Vicariate')}
-                  </div>
-                </CardContent>
-              </Card>
-
               {/* Detailed Collections Analytics */}
               <Card className="border-none shadow-sm mt-6">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -2295,81 +2218,106 @@ export function BishopDashboard({
             </CardContent>
           </Card>
 
-          {/* Row 3: Top Tier & Contribution */}
-          <div className="grid grid-cols-1 gap-6">
-            {entityType === 'Seminaries' ? (
-              <Card className="bg-[#1A1A1A] text-white border-none shadow-sm relative overflow-hidden rounded-xl min-h-[380px] flex flex-col">
-                <div className="absolute inset-0 opacity-[0.1] pointer-events-none z-0 flex items-center justify-center">
-                  <img src="/src/assets/Church.png" alt="" className="w-full h-full object-contain scale-105" />
-                </div>
-                <CardHeader className="relative z-10 pt-6 px-6 pb-2">
-                  <p className="text-[11px] font-bold tracking-widest text-gold-500 uppercase">Vocation Source</p>
-                  <h3 className="text-xl font-bold text-white mt-0.5">Vocation Source Analysis</h3>
-                </CardHeader>
-                <CardContent className="flex-1 flex flex-col items-center justify-center pb-6 px-6 relative z-10">
-                  <div className="h-[220px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={vocationSourceData}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={60}
-                          outerRadius={80}
-                          paddingAngle={5}
-                          dataKey="value"
-                          stroke="none"
-                        >
-                          {vocationSourceData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={VOCATION_SOURCE_COLORS[index % VOCATION_SOURCE_COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: '#2D2D2D', color: '#fff' }} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-2 w-full mt-4">
-                    {vocationSourceData.map((item, i) => (
-                      <div key={i} className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: VOCATION_SOURCE_COLORS[i % VOCATION_SOURCE_COLORS.length] }}></div>
-                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">{item.name}</span>
-                        <span className="text-[10px] font-bold text-gold-500 ml-auto">{item.value}%</span>
+          {/* Row 3: Top Tier */}
+          {entityType !== 'Parishes' && (
+            <Card className="border-none shadow-sm flex flex-col h-[520px]">
+              <CardHeader className="pb-4 pt-6 px-6 border-b border-gray-50">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2.5 rounded-xl ${selectedVicariate ? 'bg-gold-50' : 'bg-church-green/10'}`}>
+                      {selectedVicariate ? (
+                        <MapPin className="w-5 h-5 text-gold-600" />
+                      ) : (
+                        <TrendingUp className="w-5 h-5 text-church-green" />
+                      )}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        {selectedVicariate && (
+                          <button 
+                            onClick={() => setSelectedVicariate(null)}
+                            className="p-1 hover:bg-gray-100 rounded-md transition-colors text-gray-500 hover:text-gold-600"
+                            title="Back to Vicariates"
+                          >
+                            <ArrowLeft className="w-4 h-4" />
+                          </button>
+                        )}
+                        <h3 className="text-lg font-bold text-gray-900 tracking-tight">
+                          {selectedVicariate ? selectedVicariate : (entityType === 'Seminaries' ? 'Contribution by Seminary' : 'Contribution by Vicariate')}
+                        </h3>
                       </div>
-                    ))}
+                      <p className="text-sm text-gray-500 mt-0.5">
+                        {selectedVicariate ? 'Parish Breakdown' : 'Collections share across the diocese'}
+                      </p>
+                    </div>
                   </div>
-                </CardContent>
-              </Card>
-            ) : (
-              <Card className="bg-[#1A1A1A] text-white border-none shadow-sm relative overflow-hidden rounded-xl h-[520px] flex flex-col">
-                <div className="absolute inset-0 opacity-[0.1] pointer-events-none z-0 flex items-center justify-center">
-                  <img src="/src/assets/Church.png" alt="" className="w-full h-full object-contain scale-105" />
+                  <div className="flex items-center gap-2">
+                    {!selectedVicariate && (
+                      <div className="text-xs font-bold text-church-green bg-church-green/10 px-3 py-1.5 rounded-full">
+                        Top {contributionData.length}
+                      </div>
+                    )}
+                    <button
+                      onClick={() => setContributionSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
+                      className={`p-1.5 hover:bg-gray-100 rounded-md transition-colors text-gray-500 flex items-center gap-1 ${selectedVicariate ? 'hover:text-gold-600' : 'hover:text-church-green'}`}
+                      title={`Sort ${contributionSortOrder === 'desc' ? 'Ascending' : 'Descending'}`}
+                    >
+                      <ArrowUpDown className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
-                <CardHeader className="relative z-10 pt-6 px-6 pb-2">
-                  <h3 className="text-xl font-bold text-white mt-0.5">Entity Clustering</h3>
-                </CardHeader>
-                <CardContent className="flex-1 mt-2 pb-6 px-6 relative z-10 flex flex-col min-h-0">
-                  <div className="flex-1 overflow-y-auto pr-2 space-y-2 scrollbar-dark">
-                    {filteredTopTierData.map((entity, i) => (
-                      <div key={i} className="flex items-center justify-between bg-white/5 hover:bg-white/10 transition-colors p-3 rounded-lg border border-white/5">
-                        <div className="flex items-center gap-4">
-                          <div className="w-8 h-8 rounded-full border border-gold-500/40 text-gold-500 flex items-center justify-center font-bold text-sm">
-                            {i + 1}
+              </CardHeader>
+              <CardContent className="flex-1 flex flex-col py-2 min-h-0 px-4">
+                <div className="flex-1 w-full overflow-y-auto pr-2 scrollbar-light space-y-1 pb-4 mt-2">
+                  {(selectedVicariate ? parishContributionData : contributionData).map((entry, index, arr) => {
+                    const maxActualValue = Math.max(...arr.map(d => d.actualValue));
+                    const widthPercent = Math.max(2, (entry.actualValue / maxActualValue) * 100);
+                    
+                    return (
+                      <div 
+                        key={`${entry.name}-${index}`}
+                        onClick={() => {
+                          if (!selectedVicariate) setSelectedVicariate(entry.name);
+                        }}
+                        className={`relative group p-3 rounded-xl transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 border border-transparent ${!selectedVicariate ? 'cursor-pointer hover:bg-gray-200 hover:border-gray-300' : 'hover:bg-gold-50/60 hover:border-gold-100'}`}
+                      >
+                        <div className="flex justify-between items-end mb-2.5">
+                          <div className="flex items-center gap-2">
+                            <span className={`text-sm font-bold transition-colors text-gray-700 ${!selectedVicariate ? 'group-hover:text-church-green' : 'group-hover:text-gold-700'}`}>
+                              {stripVicariatePrefix(entry.name)}
+                            </span>
+                            {!selectedVicariate && (
+                              <ChevronRight className="w-4 h-4 text-gray-400 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300" />
+                            )}
                           </div>
-                          <div>
-                            <p className="font-bold text-white text-sm">{entity.name}</p>
-                            <p className="text-[10px] font-bold text-gray-500 tracking-wider uppercase">
-                              {entity.location} {entity.vicariate && `• ${stripVicariatePrefix(entity.vicariate)}`}
-                            </p>
+                          <div className="flex items-baseline gap-3">
+                            <span className={`text-sm font-black text-gray-900 transition-colors ${!selectedVicariate ? 'group-hover:text-church-green' : 'group-hover:text-gold-700'}`}>
+                              {formatCurrency(entry.actualValue)}
+                            </span>
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded-md w-12 text-center transition-colors ${!selectedVicariate ? 'text-church-green bg-church-green/10 group-hover:bg-church-green group-hover:text-white' : 'text-gold-700 bg-gold-100/50 group-hover:bg-gold-600 group-hover:text-white'}`}>
+                              {entry.value}%
+                            </span>
                           </div>
                         </div>
-                        <span className="font-bold text-gold-500 text-base">{entity.class}</span>
+                        <div className={`h-2.5 w-full rounded-full overflow-hidden flex ${!selectedVicariate ? 'bg-gray-100' : 'bg-gold-100/50'}`}>
+                          <div 
+                            className="h-full rounded-full transition-all duration-1000 ease-out relative shadow-sm group-hover:brightness-90"
+                            style={{ 
+                              width: `${widthPercent}%`,
+                              backgroundColor: !selectedVicariate ? '#1a472a' : '#D4AF37',
+                              opacity: Math.max(0.6, 1 - (index * 0.04))
+                            }}
+                          >
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent to-white/20" />
+                          </div>
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
             )}
-          </div>
 
           {/* Row 4: Seasonality */}
           <Card className="bg-[#1A1A1A] text-white border-none shadow-sm">
@@ -2472,29 +2420,115 @@ export function BishopDashboard({
             </CardContent>
           </Card>
 
-          {/* Row 6: Geospatial Analysis */}
-          {entityType === 'Parishes' && (
-            <Card className="border-none shadow-sm">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <MapPin className="w-6 h-6 text-church-green" />
-                  <h3 className="text-2xl font-bold text-church-green">Geospatial Collection Distribution</h3>
-                </div>
-                <p className="text-sm text-gray-400 mt-1">Heatmap showing the concentration of collections across the diocese.</p>
-              </CardHeader>
-              <CardContent className="w-full mt-6">
-                <div className="h-[450px]">
-                  <GeospatialHeatMap data={records.length > 0 ? records : ALL_PARISHES} />
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </div>
       )}
 
       {/* Predictive View Content */}
       {analyticsView === 'predictive' && (
         <div className="space-y-6 animate-in fade-in duration-500">
+
+          {/* Forecast chart — always visible for all entity types */}
+          <Card className="border-none shadow-sm">
+            <CardHeader className="flex flex-row items-start justify-between space-y-0">
+              <div>
+                <p className="text-[10px] font-bold tracking-widest uppercase text-church-black">FORECASTING ENGINE</p>
+                <h3 className="text-2xl font-bold text-gold-500">
+                  {forecastTab === 'collections' ? 'Monthly Collections Forecast' : 'Monthly Disbursements Forecast'}
+                </h3>
+              </div>
+              <div className="flex bg-gray-100 p-1 rounded-lg shrink-0">
+                <button
+                  onClick={() => setForecastTab('collections')}
+                  className={`px-4 py-1.5 text-[10px] font-black rounded-md transition-all uppercase tracking-widest ${forecastTab === 'collections' ? 'bg-gold-500 text-black shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  Collections
+                </button>
+                <button
+                  onClick={() => setForecastTab('disbursements')}
+                  className={`px-4 py-1.5 text-[10px] font-black rounded-md transition-all uppercase tracking-widest ${forecastTab === 'disbursements' ? 'bg-gold-500 text-black shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  Disbursements
+                </button>
+              </div>
+            </CardHeader>
+            <CardContent className="w-full mt-4">
+              {forecastTab === 'collections' ? (
+                <AdvancedForecastChart
+                  data={dynamicTrendData}
+                  actualKey="collections"
+                  forecastKey="forecast"
+                  yAxisLabel="Amount (PHP)"
+                  title="MONTHLY COLLECTIONS"
+                  metrics={{ mae: 35.22, rmse: 42.02, mape: 20.88, mase: 0.380, wape: 19.72, mpe: 4.46 }}
+                />
+              ) : (
+                <AdvancedForecastChart
+                  data={dynamicTrendData}
+                  actualKey="expenses_parish"
+                  forecastKey="forecast"
+                  yAxisLabel="Amount (PHP)"
+                  title="MONTHLY DISBURSEMENTS"
+                  metrics={{ mae: 28.45, rmse: 34.12, mape: 15.67, mase: 0.412, wape: 14.89, mpe: 3.21 }}
+                />
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Inflation Impact & Expense Spikes — always visible for all entity types */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card className="border-none shadow-sm">
+              <CardHeader>
+                <p className="text-[10px] font-bold tracking-widest uppercase text-church-black">SIMULATIONS</p>
+                <h3 className="text-2xl font-bold text-gold-500">Inflation Impact</h3>
+              </CardHeader>
+              <CardContent className="mt-4">
+                <div
+                  className="grid grid-cols-2 gap-4 overflow-y-auto max-h-[180px] [&::-webkit-scrollbar]:hidden"
+                  style={{ scrollbarWidth: 'none' }}
+                >
+                  {[
+                    { label: 'UTILITIES', current: 210000, projected: 280000 },
+                    { label: 'WAGES', current: 360000, projected: 390000 },
+                    { label: 'SUPPLIES', current: 155000, projected: 200000 },
+                    { label: 'MAINTENANCE', current: 190000, projected: 250000 },
+                  ].map((item, i) => (
+                    <div key={i} className="border border-gray-200 rounded-xl p-4 flex flex-col gap-2">
+                      <p className="text-[10px] font-bold text-gray-400 tracking-wider">{item.label}</p>
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-church-black">{formatCurrency(item.current)}</span>
+                        <ArrowUpRight className="w-4 h-4 text-gold-500" />
+                        <span className="font-bold text-gold-500">{formatCurrency(item.projected)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-none shadow-sm">
+              <CardHeader>
+                <p className="text-[10px] font-bold tracking-widest uppercase text-church-black">SEASONALITY</p>
+                <h3 className="text-2xl font-bold text-gold-500">Expense Spikes</h3>
+              </CardHeader>
+              <CardContent className="mt-4">
+                <div
+                  className="grid grid-cols-2 gap-4 overflow-y-auto max-h-[180px] [&::-webkit-scrollbar]:hidden"
+                  style={{ scrollbarWidth: 'none' }}
+                >
+                  {seasonalExpenseSpikes.map((item, i) => (
+                    <div key={i} className="border border-gray-200 rounded-xl p-4 flex flex-col gap-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-bold text-church-black">{item.event}</p>
+                        <span className="font-bold text-red-500 bg-red-50 px-2 py-1 rounded text-xs">{item.expectedSpike}</span>
+                      </div>
+                      <p className="text-xs text-gray-500">{item.primaryDrivers}</p>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
           {entityType === 'Seminaries' ? (
             <>
               {/* Row 1: Pipeline & Attrition */}
@@ -2755,102 +2789,6 @@ export function BishopDashboard({
             </>
           ) : (
             <>
-              {/* Row 1: Forecast & Inflation */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <Card className="lg:col-span-2 border-none shadow-sm">
-                  <CardHeader>
-                    <p className="text-[10px] font-bold tracking-widest uppercase text-church-black">FORECASTING ENGINE</p>
-                    <h3 className="text-2xl font-bold text-gold-500">Monthly Collections Forecast</h3>
-                  </CardHeader>
-                  <CardContent className="w-full mt-4">
-                    <AdvancedForecastChart 
-                      data={dynamicTrendData} 
-                      actualKey="collections" 
-                      forecastKey="forecast" 
-                      yAxisLabel="Amount (PHP)" 
-                      title="MONTHLY COLLECTIONS"
-                      metrics={{
-                        mae: 35.22,
-                        rmse: 42.02,
-                        mape: 20.88,
-                        mase: 0.380,
-                        wape: 19.72,
-                        mpe: 4.46
-                      }}
-                    />
-                  </CardContent>
-                </Card>
-
-                <Card className="border-none shadow-sm">
-                  <CardHeader>
-                    <p className="text-[10px] font-bold tracking-widest uppercase text-church-black">SIMULATIONS</p>
-                    <h3 className="text-2xl font-bold text-gold-500">Inflation Impact</h3>
-                  </CardHeader>
-                  <CardContent className="space-y-4 mt-4">
-                    {[
-                      { label: 'UTILITIES', current: 210000, projected: 280000 },
-                      { label: 'WAGES', current: 360000, projected: 390000 },
-                      { label: 'SUPPLIES', current: 155000, projected: 200000 },
-                      { label: 'MAINTENANCE', current: 190000, projected: 250000 },
-                    ].map((item, i) => (
-                      <div key={i} className="border border-gray-200 rounded-xl p-4 flex flex-col gap-2">
-                        <p className="text-[10px] font-bold text-gray-400 tracking-wider">{item.label}</p>
-                        <div className="flex items-center justify-between">
-                          <span className="font-bold text-church-black">{formatCurrency(item.current)}</span>
-                          <ArrowUpRight className="w-4 h-4 text-gold-500" />
-                          <span className="font-bold text-gold-500">{formatCurrency(item.projected)}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Row 1.5: Forecasted Disbursements */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
-                <Card className="lg:col-span-2 border-none shadow-sm">
-                  <CardHeader>
-                    <p className="text-[10px] font-bold tracking-widest uppercase text-church-black">FORECASTING ENGINE</p>
-                    <h3 className="text-2xl font-bold text-gold-500">Monthly Disbursements Forecast</h3>
-                  </CardHeader>
-                  <CardContent className="w-full mt-4">
-                    <AdvancedForecastChart 
-                      data={dynamicTrendData} 
-                      actualKey="expenses_parish" 
-                      forecastKey="forecast" 
-                      yAxisLabel="Amount (PHP)" 
-                      title="MONTHLY DISBURSEMENTS"
-                      metrics={{
-                        mae: 28.45,
-                        rmse: 34.12,
-                        mape: 15.67,
-                        mase: 0.412,
-                        wape: 14.89,
-                        mpe: 3.21
-                      }}
-                    />
-                  </CardContent>
-                </Card>
-
-                <Card className="border-none shadow-sm">
-                  <CardHeader>
-                    <p className="text-[10px] font-bold tracking-widest uppercase text-church-black">SEASONALITY</p>
-                    <h3 className="text-2xl font-bold text-gold-500">Expense Spikes</h3>
-                  </CardHeader>
-                  <CardContent className="space-y-4 mt-4">
-                    {seasonalExpenseSpikes.map((item, i) => (
-                      <div key={i} className="border border-gray-200 rounded-xl p-4 flex flex-col gap-2">
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm font-bold text-church-black">{item.event}</p>
-                          <span className="font-bold text-red-500 bg-red-50 px-2 py-1 rounded text-xs">{item.expectedSpike}</span>
-                        </div>
-                        <p className="text-xs text-gray-500">{item.primaryDrivers}</p>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-              </div>
-
               {/* Row 2: Predictions, Events, Alerts */}
               <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6">
                 <Card className="bg-church-green text-white border-none shadow-sm">
@@ -2948,20 +2886,32 @@ export function BishopDashboard({
                     <h3 className="text-2xl font-bold text-church-black">Monthly Bill Payment Risk</h3>
                   </CardHeader>
                   <CardContent className="space-y-6 mt-6">
-                    <div className="flex justify-between items-center border-b border-gray-100 pb-6">
-                      <div>
-                        <p className="font-bold text-church-black text-lg">St. Joseph Parish</p>
-                        <p className="text-xs font-bold text-rose-600 tracking-wider mt-1 uppercase">HIGH RISK: UTILITIES & SALARIES</p>
+                    {entityFilter !== 'All Entities' ? (
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="font-bold text-church-black text-lg">{entityFilter}</p>
+                          <p className="text-xs font-bold text-amber-500 tracking-wider mt-1 uppercase">MEDIUM RISK: UTILITY APPEARS</p>
+                        </div>
+                        <span className="font-bold text-amber-500 text-xl">45% Probability</span>
                       </div>
-                      <span className="font-bold text-rose-600 text-xl">82% Probability</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="font-bold text-church-black text-lg">San Roque Parish</p>
-                        <p className="text-xs font-bold text-amber-500 tracking-wider mt-1 uppercase">MEDIUM RISK: UTILITY APPEARS</p>
-                      </div>
-                      <span className="font-bold text-amber-500 text-xl">45% Probability</span>
-                    </div>
+                    ) : (
+                      <>
+                        <div className="flex justify-between items-center border-b border-gray-100 pb-6">
+                          <div>
+                            <p className="font-bold text-church-black text-lg">St. Joseph Parish</p>
+                            <p className="text-xs font-bold text-rose-600 tracking-wider mt-1 uppercase">HIGH RISK: UTILITIES & SALARIES</p>
+                          </div>
+                          <span className="font-bold text-rose-600 text-xl">82% Probability</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <p className="font-bold text-church-black text-lg">San Roque Parish</p>
+                            <p className="text-xs font-bold text-amber-500 tracking-wider mt-1 uppercase">MEDIUM RISK: UTILITY APPEARS</p>
+                          </div>
+                          <span className="font-bold text-amber-500 text-xl">45% Probability</span>
+                        </div>
+                      </>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -2971,17 +2921,27 @@ export function BishopDashboard({
                     <h3 className="text-2xl font-bold text-white">Next Year Class Movement</h3>
                   </CardHeader>
                   <CardContent className="space-y-6 mt-6">
-                    <div className="flex justify-between items-center border-b border-gray-800 pb-6">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-full bg-gold-900/50 border border-gold-500/30 text-gold-500 flex items-center justify-center font-bold">B</div>
-                        <ArrowUpRight className="w-4 h-4 text-gray-500" />
-                        <div className="w-10 h-10 rounded-full bg-gold-500 text-white flex items-center justify-center font-bold">A</div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold text-white text-lg">San Roque</p>
-                        <p className="text-[10px] font-bold text-emerald-400 tracking-wider mt-1 uppercase">92% CONFIDENCE</p>
-                      </div>
-                    </div>
+                    {(() => {
+                      const entity = filteredEntities.length > 0 ? filteredEntities[0] : null;
+                      const currentLetter = entity ? entity.class.replace('Class ', '') : 'B';
+                      const nextLetter = currentLetter === 'A' ? 'A' : String.fromCharCode(currentLetter.charCodeAt(0) - 1);
+                      const displayName = entityFilter !== 'All Entities'
+                        ? entityFilter.replace(/ Parish$/, '')
+                        : 'San Roque';
+                      return (
+                        <div className="flex justify-between items-center border-b border-gray-800 pb-6">
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-full bg-gold-900/50 border border-gold-500/30 text-gold-500 flex items-center justify-center font-bold">{currentLetter}</div>
+                            <ArrowUpRight className="w-4 h-4 text-gray-500" />
+                            <div className="w-10 h-10 rounded-full bg-gold-500 text-white flex items-center justify-center font-bold">{nextLetter}</div>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold text-white text-lg">{displayName}</p>
+                            <p className="text-[10px] font-bold text-emerald-400 tracking-wider mt-1 uppercase">92% CONFIDENCE</p>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </CardContent>
                 </Card>
               </div>
@@ -3104,116 +3064,176 @@ export function BishopDashboard({
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Left Card: Efficiency */}
-              <Card className="bg-[#1A1A1A] text-white border-none shadow-sm">
-                <CardHeader>
-                  <p className="text-[10px] font-bold tracking-widest uppercase text-gold-500">EFFICIENCY</p>
-                  <h3 className="text-2xl font-bold text-white">Utility Cost Reduction</h3>
-                </CardHeader>
-                <CardContent className="space-y-4 mt-4">
-                  {(entityType === 'Parishes' ? [
-                    { name: 'San Lorenzo Ruiz Parish', desc: 'Shift to LED fixtures + scheduled AC maintenance, review peak-hour usage.', ratio: '25% Ratio' },
-                    { name: 'Our Lady of Lourdes Parish', desc: 'Shift to LED fixtures + scheduled AC maintenance, review peak-hour usage.', ratio: '26% Ratio' },
-                    { name: 'Christ the King Parish', desc: 'Shift to LED fixtures + scheduled AC maintenance, review peak-hour usage.', ratio: '29% Ratio' },
-                  ] : [
-                    { name: 'St. Mary Academy', desc: 'Shift to LED fixtures + scheduled AC maintenance, review peak-hour usage.', ratio: '25% Ratio' },
-                    { name: 'Holy Family School', desc: 'Shift to LED fixtures + scheduled AC maintenance, review peak-hour usage.', ratio: '26% Ratio' },
-                  ]).map((item, i) => (
-                    <div key={i} className="bg-[#222222] border border-gray-800 rounded-xl p-5 flex justify-between items-center gap-4">
-                      <div>
-                        <h4 className="font-bold text-white text-sm">{item.name}</h4>
-                        <p className="text-xs text-gray-400 mt-1">{item.desc}</p>
-                      </div>
-                      <span className="bg-emerald-500/10 text-emerald-600 px-3 py-1 rounded-md text-xs font-bold whitespace-nowrap">{item.ratio}</span>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-
-              {/* Right Card: Action Plan */}
-              <Card className="border-none shadow-sm">
-                <CardHeader>
-                  <p className="text-[10px] font-bold tracking-widest uppercase text-gold-500">ACTION PLAN</p>
-                  <h3 className="text-2xl font-bold text-church-black">Ranking Upgrades</h3>
-                </CardHeader>
-                <CardContent className="space-y-4 mt-4">
-                  {(entityType === 'Parishes' ? [
-                    { name: 'Immaculate Conception Parish', desc: 'Increase pledge giving + align disbursements to baseline utilities and wages.', from: 'C', to: 'B' },
-                    { name: 'San Gabriel Archangel Parish', desc: 'Increase pledge giving + align disbursements to baseline utilities and wages.', from: 'D', to: 'C' },
-                    { name: 'San Isidro Labrador Parish', desc: 'Increase pledge giving + align disbursements to baseline utilities and wages.', from: 'D', to: 'C' },
-                  ] : [
-                    { name: 'St. Mary Academy', desc: 'Increase pledge giving + align disbursements to baseline utilities and wages.', from: 'B', to: 'A' },
-                    { name: 'Holy Family School', desc: 'Increase pledge giving + align disbursements to baseline utilities and wages.', from: 'C', to: 'B' },
-                  ]).map((item, i) => (
-                    <div key={i} className="bg-gray-50 border border-gray-100 rounded-xl p-5 flex justify-between items-center gap-4">
-                      <div>
-                        <h4 className="font-bold text-church-black text-sm">{item.name}</h4>
-                        <p className="text-xs text-gray-500 mt-1">{item.desc}</p>
-                      </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <div className="w-6 h-6 rounded-full bg-church-black text-white flex items-center justify-center text-xs font-bold">{item.from}</div>
-                        <ArrowUpRight className="w-4 h-4 text-gold-500" />
-                        <div className="w-6 h-6 rounded-full bg-gold-500 text-church-black flex items-center justify-center text-xs font-bold">{item.to}</div>
-                      </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            </div>
-
-            {entityType === 'Parishes' && (
-              <Card className="border-none shadow-sm mt-6">
-                <CardHeader>
-                  <p className="text-[10px] font-bold tracking-widest uppercase text-gold-500">SEASONAL PRESCRIPTIVE PLAN</p>
-                  <h3 className="text-2xl font-bold text-church-black">Parish Seasonal Recommendations</h3>
-                </CardHeader>
-                <CardContent className="space-y-4 mt-4">
-                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                    {parishSeasonalRecommendations.map((item) => (
-                      <div key={item.season} className="bg-gray-50 border border-gray-100 rounded-xl p-5">
-                        <div className="flex items-start justify-between gap-4">
-                          <div>
-                            <h4 className="font-bold text-church-black text-sm">{item.season}</h4>
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">{item.window}</p>
+              {entityFilter !== 'All Entities' ? (
+                /* Per-parish prescriptive content */
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <Card className="bg-[#1A1A1A] text-white border-none shadow-sm">
+                      <CardHeader>
+                        <p className="text-[10px] font-bold tracking-widest uppercase text-gold-500">EFFICIENCY</p>
+                        <h3 className="text-2xl font-bold text-white">Utility Cost Reduction</h3>
+                      </CardHeader>
+                      <CardContent className="space-y-4 mt-4">
+                        {[
+                          { desc: 'Shift to LED fixtures + scheduled AC maintenance, review peak-hour usage.', ratio: '25% Savings' },
+                          { desc: 'Adopt solar panels for daytime electrical load reduction.', ratio: '15% Savings' },
+                          { desc: 'Install sub-metering to identify high-consumption zones.', ratio: '10% Savings' },
+                        ].map((item, i) => (
+                          <div key={i} className="bg-[#222222] border border-gray-800 rounded-xl p-5 flex justify-between items-center gap-4">
+                            <div>
+                              <h4 className="font-bold text-white text-sm">{entityFilter}</h4>
+                              <p className="text-xs text-gray-400 mt-1">{item.desc}</p>
+                            </div>
+                            <span className="bg-emerald-500/10 text-emerald-600 px-3 py-1 rounded-md text-xs font-bold whitespace-nowrap">{item.ratio}</span>
                           </div>
-                          <span className="bg-gold-500/10 text-gold-700 px-3 py-1 rounded-md text-[10px] font-black whitespace-nowrap">{item.signal}</span>
-                        </div>
-                        <p className="text-xs text-gray-600 font-semibold leading-relaxed mt-4">{item.recommendation}</p>
-                        <div className="mt-4 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-church-black">
-                          <Sparkles className="w-3.5 h-3.5 text-gold-500" />
-                          {item.action}
-                        </div>
-                      </div>
-                    ))}
+                        ))}
+                      </CardContent>
+                    </Card>
+
+                    <Card className="border-none shadow-sm">
+                      <CardHeader>
+                        <p className="text-[10px] font-bold tracking-widest uppercase text-gold-500">ACTION PLAN</p>
+                        <h3 className="text-2xl font-bold text-church-black">Ranking Upgrade</h3>
+                      </CardHeader>
+                      <CardContent className="space-y-4 mt-4">
+                        {(() => {
+                          const ent = filteredEntities.length > 0 ? filteredEntities[0] : null;
+                          const cur = ent ? ent.class.replace('Class ', '') : 'B';
+                          const nxt = cur === 'A' ? 'A' : String.fromCharCode(cur.charCodeAt(0) - 1);
+                          return (
+                            <>
+                              <div className="bg-gray-50 border border-gray-100 rounded-xl p-5 flex justify-between items-center gap-4">
+                                <div>
+                                  <h4 className="font-bold text-church-black text-sm">{entityFilter}</h4>
+                                  <p className="text-xs text-gray-500 mt-1">Increase pledge giving + align disbursements to baseline utilities and wages.</p>
+                                </div>
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                  <div className="w-6 h-6 rounded-full bg-church-black text-white flex items-center justify-center text-xs font-bold">{cur}</div>
+                                  <ArrowUpRight className="w-4 h-4 text-gold-500" />
+                                  <div className="w-6 h-6 rounded-full bg-gold-500 text-church-black flex items-center justify-center text-xs font-bold">{nxt}</div>
+                                </div>
+                              </div>
+                              <div className="bg-gray-50 border border-gray-100 rounded-xl p-5">
+                                <p className="text-xs font-bold text-church-black uppercase tracking-widest mb-2">Key Actions</p>
+                                <ul className="space-y-2 text-xs text-gray-500">
+                                  <li>• Boost weekly Sunday collections through active pledge campaigns.</li>
+                                  <li>• Review and trim non-essential operational disbursements.</li>
+                                  <li>• Submit timely financial reports to maintain good standing.</li>
+                                </ul>
+                              </div>
+                            </>
+                          );
+                        })()}
+                      </CardContent>
+                    </Card>
                   </div>
-                </CardContent>
-              </Card>
-            )}
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-              {/* Disbursements Optimization */}
-              <Card className="bg-[#1A1A1A] text-white border-none shadow-sm lg:col-span-2">
-                <CardHeader>
-                  <p className="text-[10px] font-bold tracking-widest uppercase text-gold-500">DISBURSEMENTS</p>
-                  <h3 className="text-2xl font-bold text-white">Diocese-Wide Expense Optimization</h3>
-                </CardHeader>
-                <CardContent className="space-y-4 mt-4">
-                  {[
-                    { name: 'Pastoral Program Synergy', desc: 'Encourage neighboring parishes within vicariates to co-host large pastoral events and training seminars to share costs.', impact: '20% Cost Reduction per Event' },
-                    { name: 'Preventative Maintenance', desc: 'Establish a mandatory quarterly maintenance schedule for all parish facilities to reduce emergency repair disbursements.', impact: 'Long-term Stability' },
-                  ].map((item, i) => (
-                    <div key={i} className="bg-[#222222] border border-gray-800 rounded-xl p-5 flex justify-between items-center gap-4">
-                      <div>
-                        <h4 className="font-bold text-white text-sm">{item.name}</h4>
-                        <p className="text-xs text-gray-400 mt-1">{item.desc}</p>
-                      </div>
-                      <span className="bg-emerald-500/10 text-emerald-600 px-3 py-1 rounded-md text-xs font-bold whitespace-nowrap">{item.impact}</span>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            </div>
+
+                  <Card className="bg-[#1A1A1A] text-white border-none shadow-sm">
+                    <CardHeader>
+                      <p className="text-[10px] font-bold tracking-widest uppercase text-gold-500">DISBURSEMENTS</p>
+                      <h3 className="text-2xl font-bold text-white">{entityFilter.replace(/ Parish$/, '')} — Expense Optimization</h3>
+                    </CardHeader>
+                    <CardContent className="space-y-4 mt-4">
+                      {[
+                        { name: 'Liturgical Supplies', desc: 'Consolidate bulk purchases of candles, hosts, and vestments on a quarterly basis to cut per-unit costs.', impact: '10-15% Savings' },
+                        { name: 'Pastoral Events', desc: 'Co-host large parish events with neighboring churches to share logistical and venue costs.', impact: '20% Cost Reduction' },
+                        { name: 'Preventative Maintenance', desc: 'Establish a mandatory quarterly maintenance schedule for parish facilities to prevent costly emergency repairs.', impact: 'Long-term Stability' },
+                      ].map((item, i) => (
+                        <div key={i} className="bg-[#222222] border border-gray-800 rounded-xl p-5 flex justify-between items-center gap-4">
+                          <div>
+                            <h4 className="font-bold text-white text-sm">{item.name}</h4>
+                            <p className="text-xs text-gray-400 mt-1">{item.desc}</p>
+                          </div>
+                          <span className="bg-emerald-500/10 text-emerald-600 px-3 py-1 rounded-md text-xs font-bold whitespace-nowrap">{item.impact}</span>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                </div>
+              ) : (
+                /* Diocese-wide prescriptive content */
+                <>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <Card className="bg-[#1A1A1A] text-white border-none shadow-sm">
+                      <CardHeader>
+                        <p className="text-[10px] font-bold tracking-widest uppercase text-gold-500">EFFICIENCY</p>
+                        <h3 className="text-2xl font-bold text-white">Utility Cost Reduction</h3>
+                      </CardHeader>
+                      <CardContent className="space-y-4 mt-4">
+                        {(entityType === 'Parishes' ? [
+                          { name: 'San Lorenzo Ruiz Parish', desc: 'Shift to LED fixtures + scheduled AC maintenance, review peak-hour usage.', ratio: '25% Ratio' },
+                          { name: 'Our Lady of Lourdes Parish', desc: 'Shift to LED fixtures + scheduled AC maintenance, review peak-hour usage.', ratio: '26% Ratio' },
+                          { name: 'Christ the King Parish', desc: 'Shift to LED fixtures + scheduled AC maintenance, review peak-hour usage.', ratio: '29% Ratio' },
+                        ] : [
+                          { name: 'St. Mary Academy', desc: 'Shift to LED fixtures + scheduled AC maintenance, review peak-hour usage.', ratio: '25% Ratio' },
+                          { name: 'Holy Family School', desc: 'Shift to LED fixtures + scheduled AC maintenance, review peak-hour usage.', ratio: '26% Ratio' },
+                        ]).map((item, i) => (
+                          <div key={i} className="bg-[#222222] border border-gray-800 rounded-xl p-5 flex justify-between items-center gap-4">
+                            <div>
+                              <h4 className="font-bold text-white text-sm">{item.name}</h4>
+                              <p className="text-xs text-gray-400 mt-1">{item.desc}</p>
+                            </div>
+                            <span className="bg-emerald-500/10 text-emerald-600 px-3 py-1 rounded-md text-xs font-bold whitespace-nowrap">{item.ratio}</span>
+                          </div>
+                        ))}
+                      </CardContent>
+                    </Card>
+
+                    <Card className="border-none shadow-sm">
+                      <CardHeader>
+                        <p className="text-[10px] font-bold tracking-widest uppercase text-gold-500">ACTION PLAN</p>
+                        <h3 className="text-2xl font-bold text-church-black">Ranking Upgrades</h3>
+                      </CardHeader>
+                      <CardContent className="space-y-4 mt-4">
+                        {(entityType === 'Parishes' ? [
+                          { name: 'Immaculate Conception Parish', desc: 'Increase pledge giving + align disbursements to baseline utilities and wages.', from: 'C', to: 'B' },
+                          { name: 'San Gabriel Archangel Parish', desc: 'Increase pledge giving + align disbursements to baseline utilities and wages.', from: 'D', to: 'C' },
+                          { name: 'San Isidro Labrador Parish', desc: 'Increase pledge giving + align disbursements to baseline utilities and wages.', from: 'D', to: 'C' },
+                        ] : [
+                          { name: 'St. Mary Academy', desc: 'Increase pledge giving + align disbursements to baseline utilities and wages.', from: 'B', to: 'A' },
+                          { name: 'Holy Family School', desc: 'Increase pledge giving + align disbursements to baseline utilities and wages.', from: 'C', to: 'B' },
+                        ]).map((item, i) => (
+                          <div key={i} className="bg-gray-50 border border-gray-100 rounded-xl p-5 flex justify-between items-center gap-4">
+                            <div>
+                              <h4 className="font-bold text-church-black text-sm">{item.name}</h4>
+                              <p className="text-xs text-gray-500 mt-1">{item.desc}</p>
+                            </div>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <div className="w-6 h-6 rounded-full bg-church-black text-white flex items-center justify-center text-xs font-bold">{item.from}</div>
+                              <ArrowUpRight className="w-4 h-4 text-gold-500" />
+                              <div className="w-6 h-6 rounded-full bg-gold-500 text-church-black flex items-center justify-center text-xs font-bold">{item.to}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                    <Card className="bg-[#1A1A1A] text-white border-none shadow-sm lg:col-span-2">
+                      <CardHeader>
+                        <p className="text-[10px] font-bold tracking-widest uppercase text-gold-500">DISBURSEMENTS</p>
+                        <h3 className="text-2xl font-bold text-white">Diocese-Wide Expense Optimization</h3>
+                      </CardHeader>
+                      <CardContent className="space-y-4 mt-4">
+                        {[
+                          { name: 'Centralized Purchasing', desc: 'Implement a diocesan-wide procurement system for common supplies (candles, hosts, office materials) to leverage bulk pricing.', impact: '10-15% Savings' },
+                          { name: 'Pastoral Program Synergy', desc: 'Encourage neighboring parishes within vicariates to co-host large pastoral events and training seminars to share costs.', impact: '20% Cost Reduction per Event' },
+                          { name: 'Preventative Maintenance', desc: 'Establish a mandatory quarterly maintenance schedule for all parish facilities to reduce emergency repair disbursements.', impact: 'Long-term Stability' },
+                        ].map((item, i) => (
+                          <div key={i} className="bg-[#222222] border border-gray-800 rounded-xl p-5 flex justify-between items-center gap-4">
+                            <div>
+                              <h4 className="font-bold text-white text-sm">{item.name}</h4>
+                              <p className="text-xs text-gray-400 mt-1">{item.desc}</p>
+                            </div>
+                            <span className="bg-emerald-500/10 text-emerald-600 px-3 py-1 rounded-md text-xs font-bold whitespace-nowrap">{item.impact}</span>
+                          </div>
+                        ))}
+                      </CardContent>
+                    </Card>
+                  </div>
+                </>
+              )}
             </>
           )}
         </div>
@@ -3221,7 +3241,6 @@ export function BishopDashboard({
         </>
       )}
     </>
-  )}
 
       {entityFilter === 'All Entities' && <StewardChatbot />}
     </div>

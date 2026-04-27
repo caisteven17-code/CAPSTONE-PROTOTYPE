@@ -7,7 +7,6 @@ import { Footer } from './components/layout/Footer';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { BishopDashboard } from './views/BishopDashboard';
 import { PriestDashboard } from './views/PriestDashboard';
-import { ParishContainer } from './views/ParishContainer';
 import { Settings } from './views/Settings';
 import { Login } from './views/Login';
 import { Home } from './views/Home';
@@ -19,32 +18,22 @@ import { ConsolidatedFinancial } from './views/ConsolidatedFinancial';
 import { BottomNav } from './components/ui/BottomNav';
 import { StewardChatbot } from './components/ui/StewardChatbot';
 import { auth, AuthUser } from './firebase';
-import { getAppRole, type AppRole } from './lib/access';
 
-export type Role = AppRole;
+export type Role = 'bishop' | 'admin' | 'priest' | 'school' | 'seminary';
 export type Timeframe = '6m' | '1y' | 'all';
-
-/**
- * Helper function to check if role has diocese-wide access
- * @param role - User role
- * @returns True if role is bishop or admin
- */
-const isDioceseRole = (role: Role): boolean => role === 'bishop' || role === 'admin';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [role, setRole] = useState<Role>('bishop');
   const [activeTab, setActiveTab] = useState('home');
-  const [settingsInitialTab, setSettingsInitialTab] = useState<string | undefined>(undefined);
-  const [settingsReturnTab, setSettingsReturnTab] = useState<string | undefined>(undefined);
   const [timeframe, setTimeframe] = useState<Timeframe>('6m');
   const [year, setYear] = useState<number>(2026);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user: AuthUser | null) => {
       if (user?.role) {
-        setRole(getAppRole(user.roleId || user.accessRole || user.role));
+        setRole(user.role);
         setIsAuthenticated(true);
         
         // Set default tab based on role if it's the first load
@@ -52,12 +41,11 @@ export default function App() {
           const roleDefaultTab: Record<Role, string> = {
             bishop: 'home',
             admin: 'home',
-            parish_priest: 'parish-dashboard',
-            parish_secretary: 'parish-dashboard',
+            priest: 'parish-dashboard',
             school: 'school',
             seminary: 'seminaries',
           };
-          setActiveTab(roleDefaultTab[getAppRole(user.roleId || user.accessRole || user.role)]);
+          setActiveTab(roleDefaultTab[user.role]);
         }
       } else {
         setIsAuthenticated(false);
@@ -73,11 +61,9 @@ export default function App() {
   const handleLogin = (loggedInRole: Role) => {
     setRole(loggedInRole);
     setIsAuthenticated(true);
-    setSettingsInitialTab(undefined);
-    setSettingsReturnTab(undefined);
     
     // Set default tab based on role
-    if (loggedInRole === 'parish_priest' || loggedInRole === 'parish_secretary') {
+    if (loggedInRole === 'priest') {
       setActiveTab('parish-dashboard');
     } else if (loggedInRole === 'school') {
       setActiveTab('school');
@@ -97,47 +83,13 @@ export default function App() {
       setIsAuthenticated(false);
       setRole('bishop');
       setActiveTab('home');
-      setSettingsInitialTab(undefined);
-      setSettingsReturnTab(undefined);
     } catch (error) {
       console.error('Logout error:', error);
       // Fallback: reset state even if signOut fails
       setIsAuthenticated(false);
       setRole('bishop');
       setActiveTab('home');
-      setSettingsInitialTab(undefined);
-      setSettingsReturnTab(undefined);
     }
-  };
-
-  const handleNavigate = (page: string) => {
-    if (role === 'parish_priest' || role === 'parish_secretary') {
-      const allowedParishPages = role === 'parish_priest'
-        ? ['parish-dashboard', 'priest-dashboard', 'announcements', 'settings']
-        : ['parish-dashboard', 'announcements', 'settings'];
-
-      if (!allowedParishPages.includes(page)) {
-        setActiveTab('parish-dashboard');
-        return;
-      }
-    }
-
-    setSettingsInitialTab(undefined);
-    setSettingsReturnTab(page === 'settings' && activeTab !== 'settings' ? activeTab : undefined);
-    setActiveTab(page);
-  };
-
-  const openAccountSettings = () => {
-    setSettingsInitialTab('security');
-    setSettingsReturnTab(activeTab);
-    setActiveTab('settings');
-  };
-
-  const getDefaultTabForRole = (userRole: Role) => {
-    if (userRole === 'parish_priest' || userRole === 'parish_secretary') return 'parish-dashboard';
-    if (userRole === 'school') return 'school';
-    if (userRole === 'seminary') return 'seminaries';
-    return 'home';
   };
 
   if (!isAuthReady) {
@@ -158,25 +110,17 @@ export default function App() {
    */
   const renderContent = () => {
     if (activeTab === 'settings') {
-      return (
-        <Settings
-          onBack={() => handleNavigate(settingsReturnTab || getDefaultTabForRole(role))}
-          onLogout={handleLogout}
-          role={role}
-          onNavigate={handleNavigate}
-          initialTab={settingsInitialTab}
-        />
-      );
+      return <Settings onBack={() => setActiveTab('home')} onLogout={handleLogout} role={role} onNavigate={(page) => setActiveTab(page)} />;
     }
 
     if (activeTab === 'home') {
       if (role === 'bishop' || role === 'admin') {
-        return <Home onNavigate={handleNavigate} />;
+        return <Home onNavigate={(page) => setActiveTab(page)} />;
       } else {
         // Redirect non-bishop roles to their respective dashboards if they somehow land on 'home'
-        if (role === 'parish_priest' || role === 'parish_secretary') return <PriestDashboard role="priest" timeframe={timeframe} year={year} onYearChange={setYear} onNavigate={handleNavigate} onLogout={handleLogout} />;
-        if (role === 'school') return <PriestDashboard role="school" timeframe={timeframe} year={year} onYearChange={setYear} onNavigate={handleNavigate} onLogout={handleLogout} />;
-        if (role === 'seminary') return <PriestDashboard role="seminary" timeframe={timeframe} year={year} onYearChange={setYear} onNavigate={handleNavigate} onLogout={handleLogout} />;
+        if (role === 'priest') return <BishopDashboard initialEntityType="Parishes" initialEntityFilter="San Isidro Labrador Parish" lockEntityFilter timeframe={timeframe} year={year} onYearChange={setYear} />;
+        if (role === 'school') return <PriestDashboard role="school" timeframe={timeframe} year={year} onYearChange={setYear} onNavigate={setActiveTab} onLogout={handleLogout} />;
+        if (role === 'seminary') return <PriestDashboard role="seminary" timeframe={timeframe} year={year} onYearChange={setYear} onNavigate={setActiveTab} onLogout={handleLogout} />;
       }
     }
 
@@ -191,21 +135,19 @@ export default function App() {
         case 'parish-aitwin':
           return <AITwin mode="parish" />;
         case 'priest-dashboard':
-          return <PriestDashboard role="priest" timeframe={timeframe} year={year} onYearChange={setYear} onNavigate={handleNavigate} onLogout={handleLogout} />;
+          return <PriestDashboard role="priest" dashboardContext="priest" timeframe={timeframe} year={year} onYearChange={setYear} onNavigate={setActiveTab} onLogout={handleLogout} />;
         case 'priest-health':
           return <HealthTracker />;
         case 'priest-aitwin':
           return <AITwin mode="priest" />;
-        case 'seminary-aitwin':
-          return <AITwin mode="seminary" />;
-        case 'school-aitwin':
-          return <AITwin mode="school" />;
-        case 'aitwin':
-          return <AITwin mode="parish" />;
         case 'seminaries':
           return <BishopDashboard initialEntityType="Seminaries" timeframe={timeframe} year={year} onYearChange={setYear} />;
+        case 'seminary-aitwin':
+          return <AITwin mode="seminary" />;
         case 'school':
           return <BishopDashboard initialEntityType="Diocesan Schools" timeframe={timeframe} year={year} onYearChange={setYear} />;
+        case 'school-aitwin':
+          return <AITwin mode="school" />;
         case 'projects':
           return <Projects role={role} />;
         case 'announcements':
@@ -221,35 +163,31 @@ export default function App() {
       switch (activeTab) {
         case 'dashboard':
         case 'parish-dashboard':
-          if (role === 'parish_priest' || role === 'parish_secretary') {
-            return <ParishContainer role={role} timeframe={timeframe} year={year} onYearChange={setYear} onNavigate={handleNavigate} onLogout={handleLogout} />;
-          } else {
-            return <PriestDashboard role="priest" timeframe={timeframe} year={year} onYearChange={setYear} onNavigate={handleNavigate} onLogout={handleLogout} />;
+          if (role === 'priest') {
+            return <BishopDashboard initialEntityType="Parishes" initialEntityFilter="San Isidro Labrador Parish" lockEntityFilter timeframe={timeframe} year={year} onYearChange={setYear} />;
           }
+          return <PriestDashboard role={role} timeframe={timeframe} year={year} onYearChange={setYear} onNavigate={setActiveTab} onLogout={handleLogout} />;
         case 'parish-health':
-          return <PriestDashboard role="priest" timeframe={timeframe} year={year} onYearChange={setYear} onNavigate={handleNavigate} onLogout={handleLogout} />;
+          if (role === 'priest') {
+            return <BishopDashboard initialEntityType="Parishes" initialEntityFilter="San Isidro Labrador Parish" lockEntityFilter timeframe={timeframe} year={year} onYearChange={setYear} />;
+          }
+          return <PriestDashboard role={role} timeframe={timeframe} year={year} onYearChange={setYear} onNavigate={setActiveTab} onLogout={handleLogout} />;
+        case 'parish-aitwin':
+          return <AITwin mode="parish" />;
         case 'priest-dashboard':
-          if (role === 'parish_secretary') {
-            return <ParishContainer role={role} timeframe={timeframe} year={year} onYearChange={setYear} onNavigate={handleNavigate} onLogout={handleLogout} />;
-          }
-          if (role === 'parish_priest') {
-            return <ParishContainer role={role} timeframe={timeframe} year={year} onYearChange={setYear} onNavigate={handleNavigate} onLogout={handleLogout} />;
-          }
-          return <PriestDashboard role="priest" timeframe={timeframe} year={year} onYearChange={setYear} onNavigate={handleNavigate} onLogout={handleLogout} />;
+          return <PriestDashboard role={role} dashboardContext={role === 'priest' ? 'priest' : undefined} timeframe={timeframe} year={year} onYearChange={setYear} onNavigate={setActiveTab} onLogout={handleLogout} />;
         case 'priest-health':
           return <HealthTracker />;
         case 'priest-aitwin':
           return <AITwin mode="priest" />;
+        case 'seminaries':
+          return <PriestDashboard role="seminary" timeframe={timeframe} year={year} onYearChange={setYear} onNavigate={setActiveTab} onLogout={handleLogout} />;
         case 'seminary-aitwin':
           return <AITwin mode="seminary" />;
+        case 'school':
+          return <PriestDashboard role="school" timeframe={timeframe} year={year} onYearChange={setYear} onNavigate={setActiveTab} onLogout={handleLogout} />;
         case 'school-aitwin':
           return <AITwin mode="school" />;
-        case 'aitwin':
-          return <AITwin mode={role === 'seminary' ? 'seminary' : role === 'school' ? 'school' : 'parish'} />;
-        case 'seminaries':
-          return <PriestDashboard role="seminary" timeframe={timeframe} year={year} onYearChange={setYear} onNavigate={handleNavigate} onLogout={handleLogout} />;
-        case 'school':
-          return <PriestDashboard role="school" timeframe={timeframe} year={year} onYearChange={setYear} onNavigate={handleNavigate} onLogout={handleLogout} />;
         case 'projects':
           return <Projects role={role} />;
         case 'announcements':
@@ -266,43 +204,34 @@ export default function App() {
     }
   };
 
-  const showSidebar = role === 'bishop' || role === 'admin' || role === 'parish_priest' || role === 'parish_secretary';
-  const isDioceseAccess = isDioceseRole(role);
-
   return (
     <ErrorBoundary>
-      <div className="flex flex-col min-h-screen bg-church-light font-sans">
-        <TopNav 
-          onNavigate={handleNavigate}
-          onAccountSettings={openAccountSettings}
-          role={role} 
-          currentPage={activeTab} 
+      <div className="flex flex-row min-h-screen bg-church-light font-sans">
+        <Sidebar 
+          activeTab={activeTab} 
+          onNavigate={setActiveTab} 
+          role={role}
           timeframe={timeframe}
           onTimeframeChange={setTimeframe}
-          year={year}
-          onYearChange={setYear}
         />
-
-        <div className="flex flex-row flex-1 min-h-0">
-          {showSidebar && (
-            <Sidebar 
-              activeTab={activeTab} 
-              onNavigate={handleNavigate} 
-              role={role}
-              timeframe={timeframe}
-              onTimeframeChange={setTimeframe}
-            />
-          )}
-
-          <div className="flex flex-col flex-1 min-w-0 h-screen overflow-hidden">
-            <main className="flex-1 overflow-y-auto pb-20 md:pb-0">
-              {renderContent()}
-              <Footer />
-            </main>
-          </div>
+        
+        <div className="flex flex-col flex-1 min-w-0 h-screen overflow-hidden">
+          <TopNav 
+            onNavigate={(page) => setActiveTab(page)} 
+            role={role} 
+            currentPage={activeTab} 
+            timeframe={timeframe}
+            onTimeframeChange={setTimeframe}
+            year={year}
+            onYearChange={setYear}
+          />
+          <main className="flex-1 overflow-y-auto pb-20 md:pb-0">
+            {renderContent()}
+            <Footer />
+          </main>
         </div>
-
-        <BottomNav activeTab={activeTab} onNavigate={handleNavigate} role={role} />
+        
+        <BottomNav activeTab={activeTab} onNavigate={setActiveTab} />
         <StewardChatbot />
       </div>
     </ErrorBoundary>

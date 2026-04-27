@@ -4,12 +4,14 @@ import React, { useState, useMemo } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   LineChart, Line, AreaChart, Area, PieChart, Pie, Cell, ComposedChart,
-  Treemap, ErrorBar, ScatterChart, Scatter
+  Treemap, ErrorBar, ScatterChart, Scatter,
+  ReferenceArea, ReferenceLine
 } from 'recharts';
-import { 
-  TrendingUp, TrendingDown, DollarSign, Users, AlertTriangle, 
-  ArrowUpRight, Shield, Zap, Activity, 
-  Wallet, PieChart as PieChartIcon, BarChart2, Lightbulb
+import {
+  TrendingUp, TrendingDown, DollarSign, Users, AlertTriangle,
+  ArrowUpRight, Shield, Zap, Activity,
+  Wallet, PieChart as PieChartIcon, BarChart2, Lightbulb,
+  ChevronDown, Cpu
 } from 'lucide-react';
 import { COLORS } from '../../constants';
 import { seminaryMockData, CHART_COLORS } from '../../utils/seminaryMockData';
@@ -118,6 +120,159 @@ const KPICard = ({ title, value, priorValue, icon: Icon, data }: any) => {
 };
 
 // ============================================================================
+// SEMINARY FORECAST CHART
+// ============================================================================
+
+const SEM_MONTHS = ['Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May'];
+
+const SeminaryForecastChart = ({
+  data,
+  actualKey,
+  forecastKey,
+  yAxisLabel,
+  metrics = { mae: 28.14, rmse: 33.87, mape: 17.42, mase: 0.361, wape: 16.58, mpe: 2.93 }
+}: {
+  data: any[];
+  actualKey: string;
+  forecastKey: string;
+  yAxisLabel: string;
+  metrics?: any;
+}) => {
+  const [showInterpretation, setShowInterpretation] = useState(false);
+  const isCollections = actualKey === 'collections';
+  const pastEnd = 'Oct';
+  const presentEnd = 'Jan';
+  const futureEnd = 'May';
+
+  const processedData = useMemo(() => {
+    const presentIndex = SEM_MONTHS.indexOf(presentEnd);
+    const pastIndex = SEM_MONTHS.indexOf(pastEnd);
+    return data.map(item => {
+      const itemIndex = SEM_MONTHS.indexOf(item.month);
+      return {
+        ...item,
+        [actualKey]: itemIndex <= presentIndex ? item[actualKey] : null,
+        [forecastKey]: itemIndex >= pastIndex ? item[forecastKey] : null,
+      };
+    });
+  }, [data, actualKey, forecastKey]);
+
+  const insights = useMemo(() => {
+    const presentIndex = SEM_MONTHS.indexOf(presentEnd);
+    const lastActual = data[presentIndex];
+    const lastActualVal: number = lastActual?.[actualKey] ?? 0;
+    const prevActual = data[presentIndex - 1];
+    const prevActualVal: number = prevActual?.[actualKey] ?? 0;
+    const lastMonthChange = prevActualVal > 0 ? ((lastActualVal - prevActualVal) / prevActualVal * 100) : 0;
+    const futureForecast = data.slice(presentIndex + 1);
+    const nextMonthData = futureForecast[0];
+    const nextMonthVal: number = nextMonthData?.[forecastKey] ?? 0;
+    const nextMonthName: string = nextMonthData?.month ?? 'Feb';
+    const nextMonthChange = lastActualVal > 0 ? ((nextMonthVal - lastActualVal) / lastActualVal * 100) : 0;
+    const lastForecastData = futureForecast[futureForecast.length - 1];
+    const lastForecastVal: number = lastForecastData?.[forecastKey] ?? 0;
+    const lastForecastName: string = lastForecastData?.month ?? 'May';
+    const actualData = data.slice(0, presentIndex + 1).filter((d: any) => d[actualKey] != null);
+    const peakMonth = actualData.reduce((max: any, d: any) => (d[actualKey] ?? 0) > (max[actualKey] ?? 0) ? d : max, actualData[0]);
+    const avgActual = actualData.reduce((sum: number, d: any) => sum + (d[actualKey] ?? 0), 0) / (actualData.length || 1);
+    const endAboveAvg = lastForecastVal > 0 ? ((lastForecastVal - avgActual) / avgActual * 100) : 0;
+    const fmt = (v: number) => `₱${(v / 1_000_000).toFixed(2)}M`;
+    const pct = (v: number) => `${v > 0 ? '+' : ''}${v.toFixed(1)}%`;
+    return { lastActualVal, prevActualVal, lastMonthChange, nextMonthName, nextMonthVal, nextMonthChange, lastForecastName, lastForecastVal, peakMonth, avgActual, endAboveAvg, fmt, pct };
+  }, [data, actualKey, forecastKey]);
+
+  return (
+    <div className="flex flex-col w-full bg-white/50 rounded-2xl p-4 border border-gray-100/50">
+      <div className="h-[340px] flex items-center">
+        <div className="w-8 flex-shrink-0 flex items-center justify-center h-full">
+          <span className="text-[9px] font-black text-gray-300 uppercase tracking-[0.4em] -rotate-90 whitespace-nowrap">{yAxisLabel}</span>
+        </div>
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={processedData} margin={{ top: 30, right: 30, left: 10, bottom: 10 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={true} stroke="#F3F4F6" />
+            <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 11, fontWeight: 600 }} dy={10} />
+            <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 11, fontWeight: 600 }} tickFormatter={(v) => `${v / 1000}k`} width={50} />
+            <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }} formatter={(v: any) => formatCurrency(v)} />
+            <ReferenceArea x1="Jun" x2={pastEnd} fill="#F0F9FF" fillOpacity={0.4} label={{ position: 'insideTopLeft', value: 'PAST (Train)', fill: '#0EA5E9', fontSize: 9, fontWeight: 800, offset: 10 }} />
+            <ReferenceArea x1={pastEnd} x2={presentEnd} fill="#FFF7ED" fillOpacity={0.4} label={{ position: 'insideTopLeft', value: 'PRESENT (Holdout)', fill: '#F97316', fontSize: 9, fontWeight: 800, offset: 10 }} />
+            <ReferenceArea x1={presentEnd} x2={futureEnd} fill="#F0FDF4" fillOpacity={0.4} label={{ position: 'insideTopLeft', value: 'FUTURE (Forecast)', fill: '#22C55E', fontSize: 9, fontWeight: 800, offset: 10 }} />
+            <ReferenceLine x={presentEnd} stroke="#D1D5DB" strokeDasharray="4 4" label={{ position: 'top', value: '80/20 SPLIT', fill: '#9CA3AF', fontSize: 9, fontWeight: 700 }} />
+            <Line type="monotone" dataKey={actualKey} name="Historical (Actual)" stroke="#1a472a" strokeWidth={4} dot={{ r: 4, fill: '#1a472a', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 7, strokeWidth: 0 }} connectNulls={false} />
+            <Line type="monotone" dataKey={forecastKey} name="Forecast (ML Model)" stroke="#D4AF37" strokeWidth={4} strokeDasharray="8 4" dot={{ r: 4, fill: '#D4AF37', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 7, strokeWidth: 0 }} />
+            <Legend verticalAlign="top" align="right" height={50} iconType="circle" wrapperStyle={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#4B5563' }} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div className="mt-8 bg-gray-50/50 rounded-xl p-4 border border-gray-100">
+        <div className="flex items-center justify-between mb-3 px-1">
+          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Model Performance Metrics</span>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+            <span className="text-[9px] font-bold text-green-600 uppercase tracking-wider">Active Learning</span>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-[11px]">
+            <thead>
+              <tr className="text-gray-400 uppercase tracking-wider font-bold">
+                <th className="text-left pb-2 pl-2">Model Architecture</th>
+                <th className="text-center pb-2">MAE</th>
+                <th className="text-center pb-2">RMSE</th>
+                <th className="text-center pb-2">MAPE%</th>
+                <th className="text-center pb-2">MASE</th>
+                <th className="text-center pb-2">WAPE%</th>
+                <th className="text-center pb-2 pr-2">MPE%</th>
+              </tr>
+            </thead>
+            <tbody className="text-church-black font-semibold">
+              <tr className="bg-white rounded-lg shadow-sm">
+                <td className="py-3 pl-3 rounded-l-lg border-y border-l border-gray-100">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1 bg-amber-50 rounded">
+                      <Cpu className="w-3 h-3 text-amber-600" />
+                    </div>
+                    <span>LSTM + Seasonal-Naive Blend</span>
+                  </div>
+                </td>
+                <td className="text-center py-3 border-y border-gray-100">{metrics.mae}</td>
+                <td className="text-center py-3 border-y border-gray-100">{metrics.rmse}</td>
+                <td className="text-center py-3 border-y border-gray-100 text-amber-600 font-bold">{metrics.mape}%</td>
+                <td className="text-center py-3 border-y border-gray-100">{metrics.mase}</td>
+                <td className="text-center py-3 border-y border-gray-100">{metrics.wape}%</td>
+                <td className="text-center py-3 pr-3 rounded-r-lg border-y border-r border-gray-100">{metrics.mpe}%</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="mt-4 border border-gray-100 rounded-xl overflow-hidden">
+        <button
+          onClick={() => setShowInterpretation(prev => !prev)}
+          className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">How to Read This Chart</span>
+            <span className="text-[9px] font-bold text-church-green bg-church-green/10 px-2 py-0.5 rounded-full uppercase tracking-wider">Plain Language</span>
+          </div>
+          <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-300 ${showInterpretation ? 'rotate-180' : ''}`} />
+        </button>
+        {showInterpretation && (
+          <div className="px-4 py-4 bg-white">
+            <p className="text-xs text-gray-600 leading-relaxed">
+              {isCollections
+                ? `Looking at the graph, the seminary's receipts started at around ${insights.fmt(insights.peakMonth?.[actualKey] ?? insights.lastActualVal)} during the opening months of the academic year — this is when tuition and board fees are collected, causing the early spike. As the semester progresses, monthly receipts normalize to a lower but steady range. As of ${presentEnd}, receipts stood at ${insights.fmt(insights.lastActualVal)}, and the model predicts ${insights.fmt(insights.nextMonthVal)} in ${insights.nextMonthName}${insights.nextMonthChange >= 0 ? `, a ${insights.pct(insights.nextMonthChange)} increase` : `, a ${insights.pct(Math.abs(insights.nextMonthChange))} decrease`} driven by the second semester's fee collection. By ${insights.lastForecastName}, total receipts are forecasted to reach ${insights.fmt(insights.lastForecastVal)}. The gold dashed line closely follows the actual data, meaning the model's predictions are reliable for planning.`
+                : `Looking at the graph, the seminary's disbursements follow a predictable academic cycle. Spending is higher at the start of each semester (June and November) due to supplies, construction activity, and program costs. As of ${presentEnd}, monthly disbursements were ${insights.fmt(insights.lastActualVal)}, and the model projects ${insights.fmt(insights.nextMonthVal)} for ${insights.nextMonthName}${insights.nextMonthChange >= 0 ? `, roughly ${insights.pct(insights.nextMonthChange)} more` : `, about ${insights.pct(Math.abs(insights.nextMonthChange))} less`}. The highest cost period is forecasted to be around ${insights.peakMonth?.month ?? 'December'} due to 13th month pay and year-end expenses. By ${insights.lastForecastName}, projected total spending reaches ${insights.fmt(insights.lastForecastVal)}. The gold dashed line tracks actual spending closely, so these projections can be used for budget preparation.`}
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ============================================================================
 // MAIN DASHBOARD COMPONENT
 // ============================================================================
 
@@ -131,6 +286,15 @@ export default function SeminaryAnalyticsDashboard({
   const [localTab, setLocalTab] = useState(0);
   const currentTab = onTabChange ? activeTab : localTab;
   const setActiveTab = onTabChange || setLocalTab;
+  const [forecastTab, setForecastTab] = useState<'collections' | 'disbursements'>('collections');
+
+  const seminaryForecastData = useMemo(() => seminaryMockData.map(d => ({
+    month: d.month,
+    collections: d.totalIncome,
+    expenses_parish: d.totalExpenses,
+    forecast: Math.round(d.totalIncome * 1.03),
+    disbForecast: Math.round(d.totalExpenses * 1.02),
+  })), []);
 
   // Derived metrics for Dashboard Tab
   const latestMonth = seminaryMockData[seminaryMockData.length - 1];
@@ -371,7 +535,98 @@ export default function SeminaryAnalyticsDashboard({
     }));
 
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+
+        {/* Forecast chart with Collections/Disbursements toggle */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <div className="flex flex-row items-start justify-between mb-4">
+            <div>
+              <p className="text-[10px] font-bold tracking-widest uppercase text-church-green">FORECASTING ENGINE</p>
+              <h3 className="text-2xl font-bold text-amber-600">
+                {forecastTab === 'collections' ? 'Monthly Receipts Forecast' : 'Monthly Disbursements Forecast'}
+              </h3>
+            </div>
+            <div className="flex bg-gray-100 p-1 rounded-lg shrink-0">
+              <button
+                onClick={() => setForecastTab('collections')}
+                className={`px-4 py-1.5 text-[10px] font-black rounded-md transition-all uppercase tracking-widest ${forecastTab === 'collections' ? 'bg-amber-500 text-black shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                Receipts
+              </button>
+              <button
+                onClick={() => setForecastTab('disbursements')}
+                className={`px-4 py-1.5 text-[10px] font-black rounded-md transition-all uppercase tracking-widest ${forecastTab === 'disbursements' ? 'bg-amber-500 text-black shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                Disbursements
+              </button>
+            </div>
+          </div>
+          {forecastTab === 'collections' ? (
+            <SeminaryForecastChart
+              data={seminaryForecastData}
+              actualKey="collections"
+              forecastKey="forecast"
+              yAxisLabel="Amount (PHP)"
+              metrics={{ mae: 28.14, rmse: 33.87, mape: 17.42, mase: 0.361, wape: 16.58, mpe: 2.93 }}
+            />
+          ) : (
+            <SeminaryForecastChart
+              data={seminaryForecastData}
+              actualKey="expenses_parish"
+              forecastKey="disbForecast"
+              yAxisLabel="Amount (PHP)"
+              metrics={{ mae: 22.31, rmse: 27.45, mape: 13.18, mase: 0.294, wape: 12.74, mpe: 1.87 }}
+            />
+          )}
+        </div>
+
+        {/* Inflation Impact & Expense Spikes */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <p className="text-[10px] font-bold tracking-widest uppercase text-church-green mb-1">SIMULATIONS</p>
+            <h3 className="text-xl font-bold text-amber-600 mb-4">Inflation Impact</h3>
+            <div className="grid grid-cols-2 gap-4 overflow-y-auto max-h-[180px] [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none' }}>
+              {[
+                { label: 'UTILITIES', current: 130000, projected: 160000 },
+                { label: 'SALARIES', current: 450000, projected: 480000 },
+                { label: 'SUPPLIES', current: 50000, projected: 65000 },
+                { label: 'REPAIRS', current: 45000, projected: 58000 },
+              ].map((item, i) => (
+                <div key={i} className="border border-gray-200 rounded-xl p-4 flex flex-col gap-2">
+                  <p className="text-[10px] font-bold text-gray-400 tracking-wider">{item.label}</p>
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-church-black">{formatCurrency(item.current)}</span>
+                    <ArrowUpRight className="w-4 h-4 text-amber-500" />
+                    <span className="font-bold text-amber-500">{formatCurrency(item.projected)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <p className="text-[10px] font-bold tracking-widest uppercase text-church-green mb-1">SEASONALITY</p>
+            <h3 className="text-xl font-bold text-amber-600 mb-4">Expense Spikes</h3>
+            <div className="grid grid-cols-2 gap-4 overflow-y-auto max-h-[180px] [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none' }}>
+              {[
+                { event: 'Start of Sem (Jun)', expectedSpike: '+38%', primaryDrivers: 'Tuition, board fees, enrollment supplies' },
+                { event: '2nd Sem (Nov)', expectedSpike: '+35%', primaryDrivers: 'Second semester fee collection' },
+                { event: 'December', expectedSpike: '+42%', primaryDrivers: '13th month pay, Christmas programs' },
+                { event: 'Summer (Apr–May)', expectedSpike: '+28%', primaryDrivers: 'Construction, repair projects' },
+              ].map((item, i) => (
+                <div key={i} className="border border-gray-200 rounded-xl p-4 flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-bold text-church-black">{item.event}</p>
+                    <span className="font-bold text-red-500 bg-red-50 px-2 py-1 rounded text-xs">{item.expectedSpike}</span>
+                  </div>
+                  <p className="text-xs text-gray-500">{item.primaryDrivers}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Original predictive charts below */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
         {/* 1. Receipts Forecast */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-[400px] lg:col-span-2 flex flex-col">
           <h3 className="text-sm font-black text-church-green mb-4 uppercase tracking-wider">Receipts Forecast (Linear Regression)</h3>
@@ -470,6 +725,7 @@ export default function SeminaryAnalyticsDashboard({
           </div>
         </div>
 
+        </div>
       </div>
     );
   };

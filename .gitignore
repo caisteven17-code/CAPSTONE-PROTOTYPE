@@ -10,4 +10,8 @@ coverage/
 !.env.example
 .next/
 .next
+.next-build/
+.next-build
 out/
+.claude/
+*.tsbuildinfo

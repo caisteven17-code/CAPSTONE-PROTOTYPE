@@ -2,7 +2,7 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  devIndicators: false,
+  distDir: process.env.NODE_ENV === 'production' ? '.next-build' : '.next',
   env: {
     GOOGLE_MAPS_PLATFORM_KEY: process.env.GOOGLE_MAPS_PLATFORM_KEY,
   },

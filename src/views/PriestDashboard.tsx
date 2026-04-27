@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { TrendingUp, AlertTriangle, ArrowUpDown, Search, BrainCircuit, HeartPulse, Info, X, TrendingDown, Filter, ChevronRight, ChevronDown, ArrowUpRight, ArrowDownRight, Menu, Settings, Bell, User, LogOut, HelpCircle, FileText, Activity, Target, Zap, Clock, CalendarDays, Sparkles, ArrowRight, ArrowUp, Cpu, Award } from 'lucide-react';
+import { TrendingUp, AlertTriangle, ArrowUpDown, Search, BrainCircuit, HeartPulse, Info, X, TrendingDown, Filter, Download, ChevronRight, ArrowUpRight, ArrowDownRight, Menu, Settings, Bell, User, LogOut, HelpCircle, FileText, Activity, Target, Zap, Clock, CalendarDays, Sparkles, ArrowRight, ArrowUp, Cpu, Award } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer,
   Line, LineChart, AreaChart, Area, ComposedChart, PieChart, Pie, Cell, Tooltip, Legend,
@@ -14,17 +14,17 @@ import { FinancialHealthGauge } from '../components/ui/FinancialHealthGauge';
 import { HealthDimensionBar } from '../components/ui/HealthDimensionBar';
 import { DiagnosticCard } from '../components/ui/DiagnosticCard';
 import { StewardChatbot } from '../components/ui/StewardChatbot';
+import { DashboardHeader } from '../components/layout/DashboardHeader';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import { DataImportExport } from '../components/projects/DataImportExport';
 import { motion, AnimatePresence } from 'motion/react';
 import { formatCurrency, formatMillions } from '../lib/format';
 import { usePriestDashboardData } from '../hooks/usePriestDashboardData';
 import { FadeIn } from '../components/ui/FadeIn';
-import { ALL_PARISHES, INITIAL_PARISHES, INITIAL_SCHOOLS, INITIAL_SEMINARIES } from '../constants';
-import { getAccessRoleLabel } from '../lib/access';
 
 interface PriestDashboardProps {
   role?: 'priest' | 'school' | 'seminary' | 'bishop';
+  dashboardContext?: 'parish' | 'priest';
   entityName?: string;
   entityType?: string;
   entityClass?: string;
@@ -40,6 +40,8 @@ const stripVicariatePrefix = (name: string) => name.replace('Vicariate of ', '')
 
 const COMPARISON_MONTH_OPTIONS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
 const COMPARISON_YEAR_OPTIONS = ['2024', '2025', '2026'] as const;
+const GENERATE_COMPARISON_REPORT_EVENT = 'generate-comparison-report';
+
 interface ComparisonRecord {
   period: string;
   collections: number;
@@ -47,153 +49,6 @@ interface ComparisonRecord {
   variance: number;
   variancePercent: number;
   year: string;
-}
-
-type EntityDashboardNavProps = {
-  title: string;
-  entityName: string;
-  entityType: 'parish' | 'school' | 'seminary';
-  district?: string;
-  vicariate?: string;
-  leaderLabel: string;
-  leaderName?: string;
-  accessLabel?: string;
-  timeframe: '3m' | '6m' | '12m';
-  year: number;
-  userInitial: string;
-  isEmbedded?: boolean;
-  onTimeframeChange: (timeframe: '3m' | '6m' | '12m') => void;
-  onYearChange?: (year: number) => void;
-  onProfileClick?: () => void;
-};
-
-function EntityDashboardNav({
-  title,
-  entityName,
-  entityType,
-  district,
-  vicariate,
-  leaderLabel,
-  leaderName,
-  accessLabel,
-  timeframe,
-  year,
-  userInitial,
-  isEmbedded = false,
-  onTimeframeChange,
-  onYearChange,
-  onProfileClick,
-}: EntityDashboardNavProps) {
-  const [isTimeframeOpen, setIsTimeframeOpen] = useState(false);
-  const [isYearOpen, setIsYearOpen] = useState(false);
-  const timeframeLabels: Record<'3m' | '6m' | '12m', string> = {
-    '3m': 'Past 3 Months',
-    '6m': 'Past 6 Months',
-    '12m': 'Past 12 Months',
-  };
-  const metaItems = entityType === 'parish'
-    ? [
-        district || 'District not assigned',
-        vicariate ? `${stripVicariatePrefix(vicariate)} Vicariate` : 'Vicariate not assigned',
-        `${leaderLabel}: ${leaderName || 'Not assigned'}`,
-        accessLabel ? `Access: ${accessLabel}` : undefined,
-      ].filter(Boolean)
-    : [
-        vicariate ? `${stripVicariatePrefix(vicariate)} Vicariate` : undefined,
-        `${leaderLabel}: ${leaderName || 'Not assigned'}`,
-      ].filter(Boolean);
-
-  return (
-    <header className={`${isEmbedded ? 'relative mt-10' : 'sticky top-0'} z-40 bg-black border-b border-gold-500/25 px-4 md:px-8 py-3 shadow-xl`}>
-      <div className={`max-w-[1800px] mx-auto ${isEmbedded ? 'flex flex-col items-start gap-3' : 'flex items-center justify-between gap-4'}`}>
-        <div className="min-w-0">
-          <h1 className={`font-serif font-bold text-gold-400 tracking-tight ${isEmbedded ? 'text-3xl md:text-4xl' : 'text-lg md:text-2xl'}`}>
-            {title}
-          </h1>
-          <p className="mt-1 text-[10px] md:text-xs font-black uppercase tracking-[0.18em] text-white truncate">
-            {entityName}
-          </p>
-          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] md:text-xs font-semibold text-white/45">
-            {metaItems.map((item, index) => (
-              <React.Fragment key={item}>
-                {index > 0 && <span className="hidden sm:inline text-gold-500/60">•</span>}
-                <span className="truncate">{item}</span>
-              </React.Fragment>
-            ))}
-          </div>
-        </div>
-
-        {!isEmbedded && (
-          <div className="flex shrink-0 items-center gap-2 md:gap-3">
-          <div className="relative hidden sm:block">
-            <button
-              onClick={() => setIsTimeframeOpen((prev) => !prev)}
-              className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 md:px-4 py-2 text-xs font-bold text-white hover:border-gold-400/50 hover:bg-gold-500/15 transition-colors"
-            >
-              <CalendarDays size={14} className="text-gold-400" />
-              <span>{timeframeLabels[timeframe]}</span>
-              <ChevronDown size={14} className={`text-white/50 transition-transform ${isTimeframeOpen ? 'rotate-180' : ''}`} />
-            </button>
-            {isTimeframeOpen && (
-              <div className="absolute right-0 mt-2 w-44 rounded-xl border border-gold-500/25 bg-black/95 py-2 shadow-2xl">
-                {(Object.keys(timeframeLabels) as Array<'3m' | '6m' | '12m'>).map((value) => (
-                  <button
-                    key={value}
-                    onClick={() => {
-                      onTimeframeChange(value);
-                      setIsTimeframeOpen(false);
-                    }}
-                    className={`w-full px-4 py-2.5 text-left text-xs font-bold transition-colors ${
-                      timeframe === value ? 'text-gold-400 bg-gold-500/10' : 'text-gray-300 hover:bg-white/5 hover:text-white'
-                    }`}
-                  >
-                    {timeframeLabels[value]}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="relative hidden sm:block">
-            <button
-              onClick={() => setIsYearOpen((prev) => !prev)}
-              className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 md:px-4 py-2 text-xs font-bold text-white hover:border-gold-400/50 hover:bg-gold-500/15 transition-colors"
-            >
-              <span>{year}</span>
-              <ChevronDown size={14} className={`text-white/50 transition-transform ${isYearOpen ? 'rotate-180' : ''}`} />
-            </button>
-            {isYearOpen && (
-              <div className="absolute right-0 mt-2 w-28 rounded-xl border border-gold-500/25 bg-black/95 py-2 shadow-2xl">
-                {[2026, 2025, 2024, 2023, 2022].map((value) => (
-                  <button
-                    key={value}
-                    onClick={() => {
-                      onYearChange?.(value);
-                      setIsYearOpen(false);
-                    }}
-                    className={`w-full px-4 py-2.5 text-left text-xs font-bold transition-colors ${
-                      year === value ? 'text-gold-400 bg-gold-500/10' : 'text-gray-300 hover:bg-white/5 hover:text-white'
-                    }`}
-                  >
-                    {value}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <button
-            onClick={onProfileClick}
-            className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-gradient-to-br from-gold-400 to-gold-600 text-black font-black border border-gold-300 shadow-[0_0_18px_rgba(212,175,55,0.35)] hover:shadow-[0_0_24px_rgba(212,175,55,0.55)] transition-shadow"
-            aria-label="Open account settings"
-          >
-            {userInitial}
-          </button>
-        </div>
-        )}
-      </div>
-    </header>
-  );
 }
 
 const donationTrendsData = [
@@ -213,7 +68,7 @@ const CustomizedTick = (props: any) => {
   const { x, y, payload, fontSize = 11 } = props;
   const value = typeof payload.value === 'string' ? stripVicariatePrefix(payload.value) : payload.value;
   const words = value.split(' ');
-  
+
   if (words.length > 5) {
     const line1 = words.slice(0, 5).join(' ');
     const line2 = words.slice(5).join(' ');
@@ -226,7 +81,7 @@ const CustomizedTick = (props: any) => {
       </g>
     );
   }
-  
+
   return (
     <g transform={`translate(${x},${y})`}>
       <text x={0} y={0} dy={12} textAnchor="end" fill="#6B7280" fontSize={fontSize} fontWeight={500} transform="rotate(-25)">
@@ -426,6 +281,7 @@ const AdvancedForecastChart = ({
 
 export function PriestDashboard({ 
   role = 'priest',
+  dashboardContext,
   entityName,
   entityType,
   entityClass,
@@ -437,7 +293,6 @@ export function PriestDashboard({
   onLogout
 }: PriestDashboardProps) {
   const [analyticsView, setAnalyticsView] = useState<'descriptive' | 'predictive' | 'prescriptive' | 'health'>('descriptive');
-  const [activeTimeframe, setActiveTimeframe] = useState<'3m' | '6m' | '12m'>(timeframe);
   const [selectedDiagnostic, setSelectedDiagnostic] = useState<DiagnosticResult | null>(null);
   const [collectionsTimeframe, setCollectionsTimeframe] = useState<'6m' | '12m'>('12m');
   const [disbursementsTimeframe, setDisbursementsTimeframe] = useState<'6m' | '12m'>('12m');
@@ -454,15 +309,16 @@ export function PriestDashboard({
   const [enrollmentForecastFilter, setEnrollmentForecastFilter] = useState<'all' | 'enrollment' | 'capacity'>('all');
   const [ratioFilter, setRatioFilter] = useState<'all' | 'staff' | 'seminarians'>('all');
   const [clusteringFilter, setClusteringFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all');
-  const [optimizationFilter, setOptimizationFilter] = useState<'all' | 'medical aid' | 'food support' | 'emergency cash' | 'education aid'>('all');
+  const [optimizationFilter, setOptimizationFilter] = useState<'all' | 'personnel' | 'utilities' | 'programs'>('all');
   const [donationTrendsFilter, setDonationTrendsFilter] = useState<'all' | 'actual' | 'potential'>('all');
   const [donationTrendsMode, setDonationTrendsMode] = useState<'amount' | 'performance'>('performance');
+  const [showPriestFilters, setShowPriestFilters] = useState(false);
   const [comparisonMonth1, setComparisonMonth1] = useState<(typeof COMPARISON_MONTH_OPTIONS)[number]>('Jan');
   const [comparisonYear1, setComparisonYear1] = useState<(typeof COMPARISON_YEAR_OPTIONS)[number]>('2025');
   const [comparisonMonth2, setComparisonMonth2] = useState<(typeof COMPARISON_MONTH_OPTIONS)[number]>('Jan');
   const [comparisonYear2, setComparisonYear2] = useState<(typeof COMPARISON_YEAR_OPTIONS)[number]>('2026');
   const [medicalStatusFilter, setMedicalStatusFilter] = useState<'all' | 'urgent' | 'followup'>('all');
-  const [priestScope] = useState<'specific'>('specific');
+  const [priestScope, setPriestScope] = useState<'overall' | 'specific'>('overall');
 
   const mappedType = useMemo(() => {
     if (role === 'priest') return 'parish';
@@ -471,11 +327,7 @@ export function PriestDashboard({
     return 'parish';
   }, [role]);
 
-  const currentEntityId = useMemo(() => isEmbedded ? entityName : ((auth.currentUser as any)?.entityId || undefined), [isEmbedded, entityName]);
-
-  useEffect(() => {
-    setActiveTimeframe(timeframe);
-  }, [timeframe]);
+  const currentEntityId = useMemo(() => isEmbedded ? entityName : auth.currentUser?.uid, [isEmbedded, entityName]);
 
   const { 
     records, 
@@ -491,10 +343,10 @@ export function PriestDashboard({
 
   // Filter main dashboard records based on navbar timeframe selector
   const filteredRecords = useMemo(() => {
-    if (activeTimeframe === '3m') return records.slice(-3);
-    if (activeTimeframe === '6m') return records.slice(-6);
+    if (timeframe === '3m') return records.slice(-3);
+    if (timeframe === '6m') return records.slice(-6);
     return records; // '12m' or 'all' - return all records
-  }, [activeTimeframe, records]);
+  }, [timeframe, records]);
 
   const filteredCollectionsData = useMemo(() => {
     return filteredRecords;
@@ -739,6 +591,55 @@ export function PriestDashboard({
     { month: 'Jun', budget: 350000, actual: 360000, variance: 10000 },
   ], []);
 
+  const parishPredictiveData = useMemo(() => {
+    const source = filteredRecords.length > 0
+      ? filteredRecords
+      : budgetVsActualData.map((row) => ({
+          month: row.month,
+          collections: row.actual,
+          disbursements: row.budget,
+        }));
+
+    return source.map((row, index) => {
+      const previous = source[Math.max(0, index - 1)];
+      const collectionTrend = index === 0 ? 1.03 : ((row.collections || 0) / Math.max(previous.collections || 1, 1));
+      const disbursementTrend = index === 0 ? 1.02 : ((row.disbursements || 0) / Math.max(previous.disbursements || 1, 1));
+      const moderatedCollectionTrend = Math.max(0.92, Math.min(1.12, collectionTrend));
+      const moderatedDisbursementTrend = Math.max(0.94, Math.min(1.10, disbursementTrend));
+      const forecast = Math.round((row.collections || 0) * moderatedCollectionTrend);
+      const disbursementsForecast = Math.round((row.disbursements || 0) * moderatedDisbursementTrend);
+
+      return {
+        month: row.month,
+        collections: row.collections || 0,
+        disbursements: row.disbursements || 0,
+        forecast,
+        disbursementsForecast,
+        netForecast: forecast - disbursementsForecast,
+      };
+    });
+  }, [budgetVsActualData, filteredRecords]);
+
+  const predictiveSummary = useMemo(() => {
+    const latest = parishPredictiveData[parishPredictiveData.length - 1];
+    const previous = parishPredictiveData[Math.max(0, parishPredictiveData.length - 2)];
+    const forecastCollections = latest?.forecast || 0;
+    const forecastDisbursements = latest?.disbursementsForecast || 0;
+    const forecastNet = forecastCollections - forecastDisbursements;
+    const collectionChange = previous?.forecast
+      ? ((forecastCollections - previous.forecast) / previous.forecast) * 100
+      : 0;
+    const riskLevel = forecastNet < 0 || (healthScore?.compositeScore || 0) < 40 ? 'High' : collectionChange < -2 ? 'Moderate' : 'Stable';
+
+    return {
+      forecastCollections,
+      forecastDisbursements,
+      forecastNet,
+      collectionChange,
+      riskLevel,
+    };
+  }, [healthScore?.compositeScore, parishPredictiveData]);
+
   const comparisonData = useMemo<ComparisonRecord[]>(() => {
     const month1Data = budgetVsActualData.find(d => d.month === comparisonMonth1);
     const month2Data = budgetVsActualData.find(d => d.month === comparisonMonth2);
@@ -775,6 +676,48 @@ export function PriestDashboard({
     return { amount, percent };
   }, [comparisonData]);
 
+  const handleGenerateComparisonReport = useCallback(() => {
+    if (comparisonData.length !== 2) return;
+
+    const [periodOne, periodTwo] = comparisonData;
+
+    const reportLines = [
+      'STEWARDSHIP COMPARISON REPORT',
+      `Generated: ${new Date().toLocaleString()}`,
+      '',
+      `Period 1: ${periodOne.period}`,
+      `  Collections: ${formatCurrency(periodOne.collections)}`,
+      `  Budget: ${formatCurrency(periodOne.budget)}`,
+      `  Variance: ${formatCurrency(periodOne.variance)} (${periodOne.variancePercent.toFixed(1)}%)`,
+      '',
+      `Period 2: ${periodTwo.period}`,
+      `  Collections: ${formatCurrency(periodTwo.collections)}`,
+      `  Budget: ${formatCurrency(periodTwo.budget)}`,
+      `  Variance: ${formatCurrency(periodTwo.variance)} (${periodTwo.variancePercent.toFixed(1)}%)`,
+      '',
+      `Comparison: ${comparisonDelta.amount >= 0 ? '+' : ''}${formatCurrency(comparisonDelta.amount)} (${comparisonDelta.percent.toFixed(1)}%)`,
+    ];
+
+    const blob = new Blob([reportLines.join('\n')], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `stewardship-comparison-${comparisonMonth1}-${comparisonYear1}-vs-${comparisonMonth2}-${comparisonYear2}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, [comparisonData, comparisonDelta, comparisonMonth1, comparisonMonth2, comparisonYear1, comparisonYear2]);
+
+  useEffect(() => {
+    const handleGlobalGenerateReport = () => handleGenerateComparisonReport();
+
+    window.addEventListener(GENERATE_COMPARISON_REPORT_EVENT, handleGlobalGenerateReport);
+    return () => {
+      window.removeEventListener(GENERATE_COMPARISON_REPORT_EVENT, handleGlobalGenerateReport);
+    };
+  }, [handleGenerateComparisonReport]);
+
   const clusteringData = useMemo(() => [
     { week: 'Week 1', value: 85, status: 'high' },
     { week: 'Week 2', value: 65, status: 'medium' },
@@ -785,63 +728,10 @@ export function PriestDashboard({
   ], []);
 
   const optimizationData = useMemo(() => [
-    { category: 'Medical Aid', current: 62000, optimized: 78000, savings: 0 },
-    { category: 'Food Support', current: 48000, optimized: 52000, savings: 0 },
-    { category: 'Emergency Cash', current: 35000, optimized: 28000, savings: 7000 },
-    { category: 'Education Aid', current: 22000, optimized: 26000, savings: 0 },
-  ], []);
-
-  const priestFinancialDecisionMetrics = useMemo(() => [
-    {
-      label: 'Available Aid Fund',
-      value: formatCurrency(185000),
-      note: 'Cash available for approved financial assistance',
-      trend: '+8.4%',
-      status: 'Stable',
-    },
-    {
-      label: 'Open Requests',
-      value: '34',
-      note: 'Food, medical, burial, education, and emergency cash',
-      trend: '+11',
-      status: 'Rising',
-    },
-    {
-      label: 'Projected Shortage',
-      value: formatCurrency(28000),
-      note: 'Forecasted gap if all high-priority cases are funded',
-      trend: '15.1%',
-      status: 'Watch',
-    },
-  ], []);
-
-  const financialForecastData = useMemo(() => [
-    { month: 'Jan', fundActual: 210000, fundForecast: 212000, requestActual: 18, requestForecast: 19 },
-    { month: 'Feb', fundActual: 198000, fundForecast: 200000, requestActual: 21, requestForecast: 22 },
-    { month: 'Mar', fundActual: 176000, fundForecast: 178000, requestActual: 28, requestForecast: 27 },
-    { month: 'Apr', fundActual: 190000, fundForecast: 188000, requestActual: 24, requestForecast: 25 },
-    { month: 'May', fundActual: 185000, fundForecast: 183000, requestActual: 34, requestForecast: 33 },
-    { month: 'Jun', fundActual: 0, fundForecast: 157000, requestActual: 0, requestForecast: 39 },
-  ], []);
-
-  const aidPriorityData = useMemo(() => [
-    { beneficiary: 'Maria Santos', risk: 'High', reason: 'Medical expense, no stable income, 5 dependents', action: 'Approve medical aid', amount: 12000 },
-    { beneficiary: 'Juan Reyes', risk: 'High', reason: 'Repeated food support requests and unpaid utilities', action: 'Approve food support and refer to livelihood', amount: 6500 },
-    { beneficiary: 'Ana Cruz', risk: 'Medium', reason: 'Education support request with partial family income', action: 'Fund partial education aid', amount: 5000 },
-    { beneficiary: 'Roberto Lim', risk: 'Medium', reason: 'Emergency cash request after temporary job loss', action: 'Cap emergency cash aid', amount: 3500 },
-  ], []);
-
-  const budgetAllocationData = useMemo(() => [
-    { category: 'Medical Aid', suggested: 78000, share: 42 },
-    { category: 'Food Support', suggested: 52000, share: 28 },
-    { category: 'Education Aid', suggested: 26000, share: 14 },
-    { category: 'Emergency Cash', suggested: 29000, share: 16 },
-  ], []);
-
-  const whatIfScenarios = useMemo(() => [
-    { scenario: 'Donations decrease by 10%', impact: 'Shortage grows to ₱46,500', decision: 'Reduce emergency cash cap and preserve medical aid' },
-    { scenario: 'Medical requests rise by 20%', impact: '8 additional cases need review', decision: 'Move ₱16,000 from discretionary programs to medical aid' },
-    { scenario: 'Aid cap set at ₱8,000 per case', impact: 'Supports 6 more beneficiaries', decision: 'Apply cap to medium-priority cases only' },
+    { category: 'Personnel', current: 450000, optimized: 410000, savings: 40000 },
+    { category: 'Utilities', current: 120000, optimized: 95000, savings: 25000 },
+    { category: 'Programs', current: 280000, optimized: 250000, savings: 30000 },
+    { category: 'Maintenance', current: 150000, optimized: 135000, savings: 15000 },
   ], []);
 
   const priestMedicalSubmissionQueue = useMemo(() => [
@@ -881,53 +771,19 @@ export function PriestDashboard({
     { event: 'Christmas', month: 'December', expectedIncrease: '+35%', driver: 'Simbang Gabi expenses, bonuses, charity' },
   ], []);
 
-  const entityTypeForDashboard = mappedType as 'parish' | 'school' | 'seminary';
-
-  const entityDirectory = useMemo(() => {
-    if (entityTypeForDashboard === 'school') {
-      const stored = JSON.parse(localStorage.getItem('schools') || '[]');
-      return [...stored, ...INITIAL_SCHOOLS];
-    }
-    if (entityTypeForDashboard === 'seminary') {
-      const stored = JSON.parse(localStorage.getItem('seminaries') || '[]');
-      return [...stored, ...INITIAL_SEMINARIES];
-    }
-    const stored = JSON.parse(localStorage.getItem('parishes') || '[]');
-    return [...stored, ...INITIAL_PARISHES, ...ALL_PARISHES];
-  }, [entityTypeForDashboard]);
-
+  // In a real app, this would be filtered by the logged-in user's entity ID
   const entityInfo = useMemo(() => {
-    const findEntity = (name?: string, id?: string) => entityDirectory.find((entity: any) => (
-      (id && entity.id === id) || (name && entity.name?.toLowerCase() === name.toLowerCase())
-    ));
-
     if (entityName && entityType && entityClass) {
-      const matched = findEntity(entityName, currentEntityId);
-      return {
-        id: currentEntityId || matched?.id || entityName.toLowerCase().replace(/\s+/g, '_'),
-        name: entityName,
-        type: entityTypeForDashboard,
-        class: entityClass,
-        district: matched?.district,
-        vicariate: matched?.vicariate,
-        leader: matched?.pastor || matched?.principal || matched?.rector,
-      };
+      return { name: entityName, type: entityType, class: entityClass };
     }
-    const matched = findEntity(userEntityInfo.name, currentEntityId || userEntityInfo.id);
-    return {
-      ...userEntityInfo,
-      type: entityTypeForDashboard,
-      id: currentEntityId || userEntityInfo.id,
-      district: matched?.district,
-      vicariate: matched?.vicariate,
-      leader: matched?.pastor || matched?.principal || matched?.rector,
-    };
-  }, [currentEntityId, entityClass, entityDirectory, entityName, entityType, entityTypeForDashboard, userEntityInfo]);
+    return userEntityInfo;
+  }, [entityName, entityType, entityClass, userEntityInfo]);
 
-  const entityLabel = role === 'school' ? 'School' : role === 'seminary' ? 'Seminary' : 'Parish';
-  const leaderLabel = entityTypeForDashboard === 'school' ? 'Principal' : entityTypeForDashboard === 'seminary' ? 'Rector' : 'Parish Priest';
-  const accountRoleLabel = getAccessRoleLabel(auth.currentUser?.roleId || auth.currentUser?.accessRole || role);
-  const isPriestOverallView = false;
+  const resolvedDashboardContext = dashboardContext || (role === 'priest' ? 'parish' : undefined);
+  const isPriestDashboardContext = role === 'priest' && resolvedDashboardContext === 'priest';
+  const entityLabel = role === 'school' ? 'School' : role === 'seminary' ? 'Seminary' : isPriestDashboardContext ? 'Priest' : 'Parish';
+  const isPriestOverallView = isPriestDashboardContext && priestScope === 'overall';
+  const healthTrendText = healthScore?.trend === 'up' ? 'Improving' : healthScore?.trend === 'down' ? 'Declining' : 'Stable';
 
   const displayEntityName = useMemo(() => {
     if (isPriestOverallView) return 'All Priests in Diocese';
@@ -939,8 +795,8 @@ export function PriestDashboard({
       // Add entityId and entityType to records
       const recordsWithEntity = importedRecords.map(record => ({
         ...record,
-        entityId: entityInfo.id,
-        entityType: entityTypeForDashboard,
+        entityId: entityInfo.name.toLowerCase().replace(/\s+/g, '_'),
+        entityType: mappedType as 'parish' | 'school' | 'seminary',
         year: year,
       }));
       
@@ -961,36 +817,85 @@ export function PriestDashboard({
 
   return (
     <>
-      {!isEmbedded && (
-        <EntityDashboardNav
-          title={`${entityLabel} Financial Dashboard`}
-          entityName={entityInfo.name}
-          entityType={entityTypeForDashboard}
-          district={entityInfo.district}
-          vicariate={entityInfo.vicariate}
-          leaderLabel={leaderLabel}
-          leaderName={entityInfo.leader}
-          accessLabel={entityTypeForDashboard === 'parish' ? accountRoleLabel : undefined}
-          timeframe={activeTimeframe}
-          year={year}
+      {role !== 'priest' && (
+        <DashboardHeader 
+          title="Parish Financial Dashboard"
+          subtitle={entityInfo.name}
+          priestName="Parish Priest: Rev. Fr. Noel Artillaga"
           userInitial={auth.currentUser?.email?.[0]?.toUpperCase() || 'P'}
-          onTimeframeChange={setActiveTimeframe}
+          timeframe={timeframe as '3m' | '6m' | '12m'}
+          onTimeframeChange={(tf) => {
+            // Since timeframe is passed as prop, we need onTimeframeChange from props
+            // For now, just trigger year change for demo
+          }}
+          year={year}
           onYearChange={onYearChange}
-          onProfileClick={() => onNavigate?.('settings')}
+          onSettingsClick={() => {
+            onNavigate?.('settings');
+          }}
+          onLogout={() => {
+            localStorage.removeItem('currentUser');
+            onLogout?.();
+          }}
         />
+      )}
+
+      {isPriestDashboardContext && (
+        <div className="max-w-[1800px] mx-auto px-4 md:px-6 lg:px-12 pt-4 md:pt-5">
+          <div className="bg-black rounded-full px-4 md:px-5 py-2.5 flex items-center justify-between shadow-xl border border-white/5 gap-3">
+            <button
+              onClick={() => setShowPriestFilters((prev) => !prev)}
+              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-black border border-white/15 text-gray-200 hover:text-white hover:border-gold-400/40 transition-all"
+            >
+              <Filter size={14} />
+              <span className="text-xs font-black uppercase tracking-[0.2em]">Filters</span>
+            </button>
+
+            <div className="flex items-center gap-3 flex-wrap justify-end">
+              <div className="w-9 h-9 bg-gradient-to-br from-gold-400 to-gold-600 rounded-full flex items-center justify-center text-black font-black border border-gold-300 shadow-[0_0_16px_rgba(212,175,55,0.35)]">
+                {auth.currentUser?.email?.[0]?.toUpperCase() || 'P'}
+              </div>
+            </div>
+          </div>
+
+          {showPriestFilters && (
+            <div className="mt-3 bg-white rounded-2xl border border-gray-200 shadow-sm p-4 flex items-center gap-3 flex-wrap">
+              <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Scope</label>
+              <select
+                value={priestScope}
+                onChange={(e) => setPriestScope(e.target.value as 'overall' | 'specific')}
+                className="bg-gray-100 border-none text-[10px] font-bold text-church-green rounded-lg px-3 py-2 outline-none cursor-pointer hover:bg-gray-200 transition-colors"
+              >
+                <option value="overall">OVERALL DIOCESE PRIESTS</option>
+                <option value="specific">SPECIFIC FILTERED VIEW</option>
+              </select>
+
+              <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Medical Queue</label>
+              <select
+                value={medicalStatusFilter}
+                onChange={(e) => setMedicalStatusFilter(e.target.value as 'all' | 'urgent' | 'followup')}
+                className="bg-gray-100 border-none text-[10px] font-bold text-church-green rounded-lg px-3 py-2 outline-none cursor-pointer hover:bg-gray-200 transition-colors"
+              >
+                <option value="all">ALL PENDING</option>
+                <option value="urgent">URGENT OVERDUE</option>
+                <option value="followup">FOLLOW-UP REQUIRED</option>
+              </select>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Main Content */}
       <div className="space-y-6 pb-24 md:pb-12 max-w-[1800px] mx-auto px-4 md:px-6 lg:px-12 pt-6 md:pt-5">
-        {!isEmbedded && (
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
-            {/* Welcome Card */}
-            <FadeIn 
-              direction="up"
-              className="lg:col-span-2 bg-gradient-to-br from-[#FFFBF0] via-white to-white border-none rounded-[1.5rem] p-5 shadow-xl flex flex-col justify-center relative overflow-hidden group"
-            >
+      {/* Welcome & Alerts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
+        {/* Welcome Card */}
+        <FadeIn 
+          direction="up"
+          className="lg:col-span-2 bg-gradient-to-br from-[#FFFBF0] via-white to-white border-none rounded-[1.5rem] p-5 shadow-xl flex flex-col justify-center relative overflow-hidden group"
+        >
           <div className="absolute top-0 right-0 w-64 h-64 bg-gold-500/5 rounded-full -mr-32 -mt-32 blur-3xl group-hover:bg-gold-500/10 transition-colors duration-700"></div>
-          <div className="relative z-10 space-y-5">
+          <div className={`relative z-10 ${isPriestDashboardContext ? 'grid gap-5 md:grid-cols-[minmax(0,1fr)_220px] md:items-center' : 'space-y-5'}`}>
             <div className="space-y-5">
               <div className="inline-flex items-center gap-2 bg-gold-50 text-gold-600 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.2em] border border-gold-100 shadow-sm">
                 <Sparkles size={12} />
@@ -1004,17 +909,34 @@ export function PriestDashboard({
                 <span className="text-[10px] font-black uppercase tracking-wider text-gray-600 bg-gray-50 border border-gray-100 rounded-lg px-3 py-1.5 shadow-sm">
                   {displayEntityName}
                 </span>
-                {false && (
+                {isPriestDashboardContext && (
                   <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-1.5 shadow-sm flex items-center gap-1.5">
                     <AlertTriangle size={12} />
-                    Financial Decision Support
+                    Medical Results Follow-up
                   </span>
                 )}
               </div>
             </div>
 
-            </div>
-          </FadeIn>
+            {isPriestDashboardContext && (
+              <div className="relative mx-auto hidden h-full w-full max-w-[220px] md:flex items-end justify-center">
+                <div className="absolute inset-x-6 bottom-0 h-24 rounded-[2rem] bg-gradient-to-t from-black/10 to-transparent blur-2xl"></div>
+                <div className="relative flex h-[240px] w-[180px] items-end justify-center">
+                  <div className="absolute bottom-0 h-[190px] w-[132px] rounded-t-[4rem] rounded-b-[2.4rem] bg-gradient-to-b from-black via-[#161616] to-[#050505] shadow-[0_24px_40px_rgba(0,0,0,0.25)]"></div>
+                  <div className="absolute bottom-[126px] h-7 w-10 rounded-b-2xl bg-white shadow-sm"></div>
+                  <div className="absolute bottom-[112px] h-12 w-16 rounded-t-[1rem] bg-[#0f0f0f]"></div>
+                  <div className="absolute bottom-[176px] h-16 w-16 rounded-full bg-[#f3d8bc] shadow-md"></div>
+                  <div className="absolute bottom-[206px] h-9 w-[74px] rounded-t-full rounded-b-[1.6rem] bg-[#151515]"></div>
+                  <div className="absolute bottom-[104px] flex w-full justify-center">
+                    <div className="rounded-full border border-gold-200 bg-white/95 px-3 py-1 text-[9px] font-black uppercase tracking-[0.25em] text-gold-600 shadow-lg">
+                      Parish Priest
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </FadeIn>
         
         {/* Submission Tracking / Entity Profile */}
         <FadeIn 
@@ -1034,51 +956,49 @@ export function PriestDashboard({
                 {isPriestOverallView ? 'Diocese Priests Overview' : entityInfo.name}
               </h1>
               <div className="flex items-center gap-2 text-[10px] md:text-xs text-gray-400 font-black uppercase tracking-[0.15em] mt-1">
-                <span>{entityInfo.vicariate ? `${stripVicariatePrefix(entityInfo.vicariate)} Vicariate` : entityInfo.type}</span>
+                <span>{isPriestOverallView ? 'Diocese of San Pablo' : stripVicariatePrefix(entityInfo.type)}</span>
                 <span className="w-1.5 h-1.5 rounded-full bg-gold-500"></span>
                 <span className="text-gold-600">{isPriestOverallView ? 'Overall' : entityInfo.class}</span>
               </div>
             </div>
 
             <div className="mt-6 space-y-2.5 relative z-10">
-              {false ? (
+              {isPriestDashboardContext ? (
                 <>
                   <div className="flex items-center justify-between mb-1">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Financial Pipeline Snapshot</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Medical Submission Tracking</p>
                     <span className="text-[9px] bg-orange-50 text-orange-700 px-2 py-0.5 rounded-lg font-black uppercase tracking-wider border border-orange-100">
-                      Budget Watch
+                      Action Required
                     </span>
                   </div>
 
                   <p className="text-[10px] text-gray-500 font-semibold mb-2">
-                    Data confirmed by the diocese, transformed into financial features, forecasts, and recommended actions.
+                    Priests with pending medical results despite birth month already passed
                   </p>
 
                   <div className="max-h-[280px] overflow-y-auto pr-1 space-y-2">
-                    {priestFinancialDecisionMetrics.map((item) => (
-                      <div key={item.label} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100 group/item hover:bg-gold-50 transition-colors">
+                    {priestsPendingMedicalResults.map((item) => (
+                      <div key={item.name} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100 group/item hover:bg-gold-50 transition-colors">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm border border-gray-100 text-church-green">
-                            <FileText size={16} />
+                            <HeartPulse size={16} />
                           </div>
                           <div>
-                            <p className="text-base md:text-lg font-black text-black leading-tight">{item.value}</p>
+                            <p className="text-base md:text-lg font-black text-black leading-tight">{item.name}</p>
                             <p className="text-[11px] text-gray-500 font-black uppercase tracking-[0.12em]">
-                              {item.label}
+                              {item.vicariate} • {item.priestClass}
                             </p>
                             <p className="text-[11px] text-gray-600 font-semibold mt-0.5">
-                              {item.note}
+                              Birth Month: {item.birthMonth} • Last Submitted: {item.lastSubmission}
                             </p>
                           </div>
                         </div>
                         <span className={`text-[9px] px-2 py-0.5 rounded-lg font-black uppercase tracking-wider border ${
-                          item.status === 'Watch'
+                          item.category === 'urgent'
                             ? 'bg-red-50 text-red-700 border-red-100'
-                            : item.status === 'Rising'
-                              ? 'bg-orange-50 text-orange-700 border-orange-100'
-                              : 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                            : 'bg-orange-50 text-orange-700 border-orange-100'
                         }`}>
-                          {item.trend}
+                          {item.category === 'urgent' ? 'URGENT' : 'FOLLOW-UP'}
                         </span>
                       </div>
                     ))}
@@ -1128,7 +1048,7 @@ export function PriestDashboard({
                         <p className="mb-3 text-[10px] font-black uppercase tracking-widest text-gray-500">Data Management</p>
                         <DataImportExport
                           entityName={entityInfo.name}
-                          entityType={entityTypeForDashboard}
+                          entityType={mappedType as 'parish' | 'school' | 'seminary'}
                           year={year || 2026}
                           onImport={handleImportRecords}
                         />
@@ -1140,7 +1060,7 @@ export function PriestDashboard({
             </div>
           </div>
         </FadeIn>
-      </div>) }
+      </div>
 
       {role === 'seminary' && (
         <FadeIn direction="up" delay={0.15}>
@@ -1155,7 +1075,7 @@ export function PriestDashboard({
 
 
       {/* Priest Assignment Health Score */}
-      {false && priestAssignmentScore && (
+      {isPriestDashboardContext && priestAssignmentScore && (
         <FadeIn 
           direction="up"
           className="grid grid-cols-1 gap-3"
@@ -1246,20 +1166,20 @@ export function PriestDashboard({
       )}
 
       {/* KPIs Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 mb-4">
         {isVisible(`MONTHLY ${entityLabel.toUpperCase()} COLLECTIONS / RECEIPTS`) && (
           <FadeIn 
             direction="up"
-            className="bg-white rounded-[1.5rem] p-5 shadow-xl border-none relative overflow-hidden group hover:-translate-y-1 transition-all duration-500 min-h-[140px] flex flex-col"
+            className="bg-white rounded-[1.5rem] p-4 shadow-xl border-none relative overflow-hidden group hover:-translate-y-1 transition-all duration-500 min-h-[120px] flex flex-col min-w-0"
           >
             <div className="absolute top-0 right-0 w-24 h-24 bg-church-green/5 rounded-full -mr-12 -mt-12 blur-2xl group-hover:bg-church-green/10 transition-colors"></div>
             <div>
-              <h3 className="text-[10px] font-black text-gray-400 tracking-[0.2em] uppercase mb-2 relative z-10">Monthly {entityLabel} Collections</h3>
-              <div className="text-2xl md:text-3xl font-black text-church-green tracking-tighter relative z-10 group-hover:scale-105 transition-transform origin-left duration-500 line-clamp-1">
+              <h3 className="text-[10px] font-black text-gray-400 tracking-[0.2em] uppercase mb-1.5 relative z-10">Monthly {entityLabel} Collections</h3>
+              <div className="w-full whitespace-nowrap text-[clamp(1.2rem,1.5vw,1.75rem)] font-black text-church-green tracking-tight relative z-10 group-hover:scale-[1.02] transition-transform origin-left duration-500">
                 {formatCurrency(totalCollections)}
               </div>
             </div>
-            <div className="flex items-center justify-between w-full mt-auto pt-3 relative z-10">
+            <div className="flex items-center justify-between w-full mt-auto pt-2.5 relative z-10">
               <div className="flex items-center gap-1.5">
                 <span className="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-lg text-[9px] font-black border border-emerald-100 shadow-sm whitespace-nowrap">
                   <ArrowUpRight className="w-2.5 h-2.5 flex-shrink-0" /> +4.2%
@@ -1281,16 +1201,16 @@ export function PriestDashboard({
           <FadeIn 
             direction="up"
             delay={0.1}
-            className="bg-white rounded-[1.5rem] p-5 shadow-xl border-none relative overflow-hidden group hover:-translate-y-1 transition-all duration-500 min-h-[140px] flex flex-col"
+            className="bg-white rounded-[1.5rem] p-4 shadow-xl border-none relative overflow-hidden group hover:-translate-y-1 transition-all duration-500 min-h-[120px] flex flex-col min-w-0"
           >
             <div className="absolute top-0 right-0 w-24 h-24 bg-red-500/5 rounded-full -mr-12 -mt-12 blur-2xl group-hover:bg-red-500/10 transition-colors"></div>
             <div>
-              <h3 className="text-[10px] font-black text-gray-400 tracking-[0.2em] uppercase mb-2 relative z-10">Monthly {entityLabel} Disbursements</h3>
-              <div className="text-2xl md:text-3xl font-black text-church-green tracking-tighter relative z-10 group-hover:scale-105 transition-transform origin-left duration-500 line-clamp-1">
+              <h3 className="text-[10px] font-black text-gray-400 tracking-[0.2em] uppercase mb-1.5 relative z-10">Monthly {entityLabel} Disbursements</h3>
+              <div className="w-full whitespace-nowrap text-[clamp(1.2rem,1.5vw,1.75rem)] font-black text-church-green tracking-tight relative z-10 group-hover:scale-[1.02] transition-transform origin-left duration-500">
                 {formatCurrency(totalDisbursements)}
               </div>
             </div>
-            <div className="flex items-center gap-1.5 relative z-10 mt-auto pt-3">
+            <div className="flex items-center gap-1.5 relative z-10 mt-auto pt-2.5">
               <span className="flex items-center gap-1 bg-red-50 text-red-700 px-2 py-0.5 rounded-lg text-[9px] font-black border border-red-100 shadow-sm whitespace-nowrap">
                 <ArrowUp className="w-2.5 h-2.5 flex-shrink-0" /> +1.2%
               </span>
@@ -1302,39 +1222,47 @@ export function PriestDashboard({
         <FadeIn 
           direction="up"
           delay={0.2}
-          className="bg-white rounded-[1.5rem] p-5 shadow-xl border-none relative overflow-hidden group hover:-translate-y-1 transition-all duration-500 min-h-[140px] flex flex-col"
+          className="bg-white rounded-[1.5rem] p-4 shadow-xl border-none relative overflow-hidden group hover:-translate-y-1 transition-all duration-500 min-h-[120px] flex flex-col min-w-0"
         >
           <div className="absolute top-0 right-0 w-24 h-24 bg-gold-500/5 rounded-full -mr-12 -mt-12 blur-2xl group-hover:bg-gold-500/10 transition-colors"></div>
           <div>
-            <h3 className="text-[10px] font-black text-gray-400 tracking-[0.2em] uppercase mb-2 relative z-10">Net Balance</h3>
-            <div className="text-2xl md:text-3xl font-black text-gold-600 tracking-tighter relative z-10 group-hover:scale-105 transition-transform origin-left duration-500 line-clamp-1">
+            <h3 className="text-[10px] font-black text-gray-400 tracking-[0.2em] uppercase mb-1.5 relative z-10">Net Balance</h3>
+            <div className="w-full whitespace-nowrap text-[clamp(1.2rem,1.5vw,1.75rem)] font-black text-gold-600 tracking-tight relative z-10 group-hover:scale-[1.02] transition-transform origin-left duration-500">
               {formatCurrency(totalCollections - totalDisbursements)}
             </div>
           </div>
-          <div className="flex items-center gap-1.5 relative z-10 mt-auto pt-3">
+          <div className="flex items-center gap-1.5 relative z-10 mt-auto pt-2.5">
             <span className="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-lg text-[9px] font-black border border-emerald-100 shadow-sm whitespace-nowrap">
               <TrendingUp className="w-2.5 h-2.5 flex-shrink-0" /> Healthy
             </span>
           </div>
         </FadeIn>
 
-        {isVisible('CLASSIFICATION') && (
+        {healthScore && (
           <FadeIn 
             direction="up"
             delay={0.3}
-            className="bg-white rounded-[1.5rem] p-5 shadow-xl border-none relative overflow-hidden group hover:-translate-y-1 transition-all duration-500 min-h-[140px] flex flex-col"
+            className="bg-white rounded-[1.5rem] p-4 shadow-xl border-none relative overflow-hidden group hover:-translate-y-1 transition-all duration-500 min-h-[120px] flex flex-col min-w-0"
           >
             <div className="absolute top-0 right-0 w-24 h-24 bg-gold-500/5 rounded-full -mr-12 -mt-12 blur-2xl group-hover:bg-gold-500/10 transition-colors"></div>
             <div>
-              <h3 className="text-[10px] font-black text-gray-400 tracking-[0.2em] uppercase mb-2 relative z-10">Classification</h3>
-              <div className="text-4xl md:text-5xl font-black text-gold-500 tracking-tighter relative z-10 group-hover:scale-105 transition-transform origin-left duration-500">
-                {entityInfo.class}
+              <h3 className="text-[10px] font-black text-gray-400 tracking-[0.2em] uppercase mb-1.5 relative z-10">Financial Health Score</h3>
+              <div className="text-[clamp(1.9rem,2.4vw,2.6rem)] font-black text-gold-600 tracking-tight relative z-10 group-hover:scale-[1.02] transition-transform origin-left duration-500">
+                {healthScore.compositeScore}
               </div>
             </div>
-            <div className="flex items-center justify-end relative z-10 mt-auto pt-4">
-              <div className="w-9 h-9 bg-gold-50 rounded-xl text-gold-600 flex items-center justify-center border border-gold-100 shadow-sm flex-shrink-0">
-                <Award size={18} />
-              </div>
+            <div className="flex items-center gap-1.5 relative z-10 mt-auto pt-2.5">
+              <span className={`flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9px] font-black border shadow-sm whitespace-nowrap ${
+                healthScore.trend === 'down'
+                  ? 'bg-red-50 text-red-700 border-red-100'
+                  : healthScore.trend === 'up'
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                    : 'bg-gold-50 text-gold-700 border-gold-100'
+              }`}>
+                <TrendingUp className="w-2.5 h-2.5 flex-shrink-0" />
+                {healthTrendText}
+              </span>
+              <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider hidden sm:inline">Diagnostic</span>
             </div>
           </FadeIn>
         )}
@@ -1400,6 +1328,72 @@ export function PriestDashboard({
       {/* Diagnostic View Content */}
       {analyticsView === 'health' && healthScore && (
         <div className="grid grid-cols-1 gap-6">
+          <div className="bg-white rounded-[1.5rem] p-5 md:p-6 shadow-xl border border-gray-100 relative overflow-hidden group">
+            <div className="absolute top-0 left-0 h-full w-1.5 bg-gold-500"></div>
+            <div className="absolute top-0 right-0 w-64 h-64 bg-gold-500/5 rounded-full -mr-32 -mt-32 blur-3xl group-hover:bg-gold-500/10 transition-colors duration-700"></div>
+            <div className="relative z-10 flex flex-col gap-6">
+              <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gold-500 text-black flex items-center justify-center shadow-lg shadow-gold-500/20">
+                      <HeartPulse size={20} />
+                    </div>
+                    <h3 className="text-xl md:text-2xl font-black text-church-green tracking-tight uppercase">{entityLabel} Financial Health Score</h3>
+                    <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-emerald-100 shadow-sm">
+                      <TrendingUp size={12} />
+                      <span>{healthTrendText}</span>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-400 font-medium md:ml-13">
+                    Composite analysis for {entityInfo.name} based on liquidity, sustainability, efficiency, stability, and growth.
+                  </p>
+                </div>
+                <div className="flex flex-col items-start md:items-end bg-gray-50 px-4 py-2 rounded-2xl border border-gray-100">
+                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Change</span>
+                  <span className={`text-xs font-black ${healthScore.percentageChange >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+                    {healthScore.percentageChange >= 0 ? '+' : ''}{healthScore.percentageChange.toFixed(1)}%
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+                <div className="lg:col-span-5 flex items-center justify-center">
+                  <FinancialHealthGauge
+                    score={healthScore.compositeScore}
+                    size={220}
+                    description={`${entityInfo.name} is currently in a ${healthTrendText.toLowerCase()} financial health position.`}
+                  />
+                </div>
+                <div className="lg:col-span-7">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-3">
+                    <div className="sm:col-span-2 mb-1 flex items-center justify-between">
+                      <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em]">Health Dimensions</h4>
+                      <div className="h-px flex-1 bg-gradient-to-r from-gray-100 to-transparent mx-4"></div>
+                    </div>
+                    <HealthDimensionBar label="Liquidity" score={healthScore.dimensions.liquidity} weight={30} />
+                    <HealthDimensionBar label="Sustainability" score={healthScore.dimensions.sustainability} weight={25} />
+                    <HealthDimensionBar label="Efficiency" score={healthScore.dimensions.efficiency} weight={20} />
+                    <HealthDimensionBar label="Stability" score={healthScore.dimensions.stability} weight={15} />
+                    <div className="sm:col-span-2">
+                      <HealthDimensionBar label="Growth" score={healthScore.dimensions.growth} weight={10} />
+                    </div>
+                  </div>
+
+                  <div className="mt-6 p-4 bg-gradient-to-br from-church-green/5 to-transparent rounded-3xl border border-church-green/10 flex items-start gap-4 relative overflow-hidden">
+                    <div className="w-12 h-12 rounded-2xl bg-gold-500 text-black flex items-center justify-center shrink-0 shadow-xl shadow-gold-500/20">
+                      <BrainCircuit size={24} />
+                    </div>
+                    <div className="relative z-10">
+                      <h5 className="text-[10px] font-black text-church-green uppercase tracking-[0.2em] mb-1.5">Steward's Insight</h5>
+                      <p className="text-sm text-gray-600 leading-relaxed font-medium">
+                        {healthScore.analysis || 'Use the dimension scores to identify where the parish needs closer monitoring and which areas can support future planning.'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1427,36 +1421,15 @@ export function PriestDashboard({
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.25em] text-gray-400">Descriptive Analytics</p>
-                <h3 className="text-lg font-black text-church-green">Financial Decision Current-State View</h3>
+                <h3 className="text-lg font-black text-church-green">
+                  {isPriestDashboardContext ? 'Priest Stewardship Current-State View' : `${entityLabel} Current-State View`}
+                </h3>
               </div>
               <div className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-wide text-gray-500 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2">
                 <Target size={12} />
-                <span>Funds, requests, aid mix, and budget discipline</span>
+                <span>Current performance, mix, and discipline</span>
               </div>
             </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {priestFinancialDecisionMetrics.map((metric) => (
-              <div key={metric.label} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">{metric.label}</p>
-                    <p className="text-3xl font-black text-church-green mt-2">{metric.value}</p>
-                  </div>
-                  <span className={`text-[9px] px-2 py-1 rounded-lg font-black uppercase tracking-wider border ${
-                    metric.status === 'Watch'
-                      ? 'bg-red-50 text-red-700 border-red-100'
-                      : metric.status === 'Rising'
-                        ? 'bg-orange-50 text-orange-700 border-orange-100'
-                        : 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                  }`}>
-                    {metric.status}
-                  </span>
-                </div>
-                <p className="text-xs font-semibold text-gray-500 mt-3">{metric.note}</p>
-              </div>
-            ))}
           </div>
 
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
@@ -1553,97 +1526,99 @@ export function PriestDashboard({
             )}
           </div>
 
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
-            <div className="flex items-center justify-between mb-5">
-              <div className="space-y-3">
-                <h3 className="text-lg font-bold text-church-green">Donation Trends by Priest Assignment</h3>
-                <div className="inline-flex items-center bg-gray-100 rounded-lg p-1">
-                  <button
-                    type="button"
-                    onClick={() => setDonationTrendsMode('performance')}
-                    className={`px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wide transition-colors ${donationTrendsMode === 'performance' ? 'bg-white text-church-green shadow-sm' : 'text-gray-500 hover:text-church-green'}`}
-                  >
-                    Performance %
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDonationTrendsMode('amount')}
-                    className={`px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wide transition-colors ${donationTrendsMode === 'amount' ? 'bg-white text-church-green shadow-sm' : 'text-gray-500 hover:text-church-green'}`}
-                  >
-                    Income Amount
-                  </button>
+          {isPriestDashboardContext && (
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+              <div className="flex items-center justify-between mb-5">
+                <div className="space-y-3">
+                  <h3 className="text-lg font-bold text-church-green">Donation Trends by Priest Assignment</h3>
+                  <div className="inline-flex items-center bg-gray-100 rounded-lg p-1">
+                    <button
+                      type="button"
+                      onClick={() => setDonationTrendsMode('performance')}
+                      className={`px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wide transition-colors ${donationTrendsMode === 'performance' ? 'bg-white text-church-green shadow-sm' : 'text-gray-500 hover:text-church-green'}`}
+                    >
+                      Performance %
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDonationTrendsMode('amount')}
+                      className={`px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wide transition-colors ${donationTrendsMode === 'amount' ? 'bg-white text-church-green shadow-sm' : 'text-gray-500 hover:text-church-green'}`}
+                    >
+                      Income Amount
+                    </button>
+                  </div>
                 </div>
+                <select
+                  value={donationTrendsFilter}
+                  onChange={(e) => setDonationTrendsFilter(e.target.value as 'all' | 'actual' | 'potential')}
+                  className="bg-gray-100 border-none text-[10px] font-bold text-church-green rounded-lg px-3 py-2 outline-none cursor-pointer hover:bg-gray-200 transition-colors"
+                >
+                  <option value="all">ALL CATEGORIES</option>
+                  <option value="actual">ACTUAL DONATIONS</option>
+                  <option value="potential">PROJECTED POTENTIAL</option>
+                </select>
               </div>
-              <select
-                value={donationTrendsFilter}
-                onChange={(e) => setDonationTrendsFilter(e.target.value as 'all' | 'actual' | 'potential')}
-                className="bg-gray-100 border-none text-[10px] font-bold text-church-green rounded-lg px-3 py-2 outline-none cursor-pointer hover:bg-gray-200 transition-colors"
-              >
-                <option value="all">ALL CATEGORIES</option>
-                <option value="actual">ACTUAL DONATIONS</option>
-                <option value="potential">PROJECTED POTENTIAL</option>
-              </select>
-            </div>
-            <div className="h-[320px] flex items-center">
-              <div className="w-8 flex-shrink-0 flex items-center justify-center h-full">
-                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em] -rotate-90 whitespace-nowrap">{donationTrendsMode === 'performance' ? 'Performance (%)' : 'Amount (PHP)'}</span>
+              <div className="h-[320px] flex items-center">
+                <div className="w-8 flex-shrink-0 flex items-center justify-center h-full">
+                  <span className="text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em] -rotate-90 whitespace-nowrap">{donationTrendsMode === 'performance' ? 'Performance (%)' : 'Amount (PHP)'}</span>
+                </div>
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={donationTrendDisplayData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="priestDonationGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#D4AF37" stopOpacity={1} />
+                        <stop offset="100%" stopColor="#B5952F" stopOpacity={0.85} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
+                    <XAxis dataKey="name" axisLine={{ stroke: '#E5E7EB' }} tickLine={false} tick={<CustomizedTick fontSize={9} />} interval={0} height={78} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6B7280', fontSize: 10 }} tickFormatter={(value) => donationTrendsMode === 'performance' ? `${Number(value).toFixed(0)}%` : formatMillions(value)} width={50} />
+                    <Tooltip
+                      formatter={(value: number, name: string) => [
+                        donationTrendsMode === 'performance' ? `${value.toFixed(2)}%` : formatCurrency(value),
+                        name === 'barValue' || name === 'barPercentage'
+                          ? (donationTrendsMode === 'performance' ? 'Actual Share of Total Income' : 'Actual Donations')
+                          : (donationTrendsMode === 'performance' ? 'Potential Share of Total Income' : 'Projected Potential')
+                      ]}
+                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)', fontSize: '11px' }}
+                    />
+                    <Legend
+                      verticalAlign="top"
+                      align="right"
+                      height={36}
+                      iconType="circle"
+                      wrapperStyle={{ fontSize: '11px', fontWeight: 600 }}
+                      formatter={(value) =>
+                        value === 'barValue' || value === 'barPercentage'
+                          ? (donationTrendsMode === 'performance' ? 'Actual Share of Total Income' : 'Actual Donations')
+                          : (donationTrendsMode === 'performance' ? 'Potential Share of Total Income' : 'Projected Potential')
+                      }
+                    />
+                    {(donationTrendsFilter === 'all' || donationTrendsFilter === 'actual') && (
+                      <Bar
+                        dataKey={donationTrendsMode === 'performance' ? 'barPercentage' : 'barValue'}
+                        name={donationTrendsMode === 'performance' ? 'Actual Share of Total Income' : 'Actual Donations'}
+                        fill="url(#priestDonationGradient)"
+                        radius={[5, 5, 0, 0]}
+                        maxBarSize={38}
+                      />
+                    )}
+                    {(donationTrendsFilter === 'all' || donationTrendsFilter === 'potential') && (
+                      <Line
+                        type="monotone"
+                        dataKey={donationTrendsMode === 'performance' ? 'linePercentage' : 'lineValue'}
+                        name={donationTrendsMode === 'performance' ? 'Potential Share of Total Income' : 'Projected Potential'}
+                        stroke="#1a472a"
+                        strokeWidth={3}
+                        dot={{ r: 3, fill: '#1a472a', stroke: '#fff', strokeWidth: 1.5 }}
+                      />
+                    )}
+                  </ComposedChart>
+                </ResponsiveContainer>
               </div>
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={donationTrendDisplayData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="priestDonationGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#D4AF37" stopOpacity={1} />
-                      <stop offset="100%" stopColor="#B5952F" stopOpacity={0.85} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
-                  <XAxis dataKey="name" axisLine={{ stroke: '#E5E7EB' }} tickLine={false} tick={<CustomizedTick fontSize={9} />} interval={0} height={78} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6B7280', fontSize: 10 }} tickFormatter={(value) => donationTrendsMode === 'performance' ? `${Number(value).toFixed(0)}%` : formatMillions(value)} width={50} />
-                  <Tooltip
-                    formatter={(value: number, name: string) => [
-                      donationTrendsMode === 'performance' ? `${value.toFixed(2)}%` : formatCurrency(value),
-                      name === 'barValue' || name === 'barPercentage'
-                        ? (donationTrendsMode === 'performance' ? 'Actual Share of Total Income' : 'Actual Donations')
-                        : (donationTrendsMode === 'performance' ? 'Potential Share of Total Income' : 'Projected Potential')
-                    ]}
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)', fontSize: '11px' }}
-                  />
-                  <Legend
-                    verticalAlign="top"
-                    align="right"
-                    height={36}
-                    iconType="circle"
-                    wrapperStyle={{ fontSize: '11px', fontWeight: 600 }}
-                    formatter={(value) =>
-                      value === 'barValue' || value === 'barPercentage'
-                        ? (donationTrendsMode === 'performance' ? 'Actual Share of Total Income' : 'Actual Donations')
-                        : (donationTrendsMode === 'performance' ? 'Potential Share of Total Income' : 'Projected Potential')
-                    }
-                  />
-                  {(donationTrendsFilter === 'all' || donationTrendsFilter === 'actual') && (
-                    <Bar
-                      dataKey={donationTrendsMode === 'performance' ? 'barPercentage' : 'barValue'}
-                      name={donationTrendsMode === 'performance' ? 'Actual Share of Total Income' : 'Actual Donations'}
-                      fill="url(#priestDonationGradient)"
-                      radius={[5, 5, 0, 0]}
-                      maxBarSize={38}
-                    />
-                  )}
-                  {(donationTrendsFilter === 'all' || donationTrendsFilter === 'potential') && (
-                    <Line
-                      type="monotone"
-                      dataKey={donationTrendsMode === 'performance' ? 'linePercentage' : 'lineValue'}
-                      name={donationTrendsMode === 'performance' ? 'Potential Share of Total Income' : 'Projected Potential'}
-                      stroke="#1a472a"
-                      strokeWidth={3}
-                      dot={{ r: 3, fill: '#1a472a', stroke: '#fff', strokeWidth: 1.5 }}
-                    />
-                  )}
-                </ComposedChart>
-              </ResponsiveContainer>
+              <div className="text-center mt-2 text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em]">Priest</div>
             </div>
-            <div className="text-center mt-2 text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em]">Priest</div>
-          </div>
+          )}
 
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
             <div className="flex items-center justify-between mb-5">
@@ -1706,74 +1681,121 @@ export function PriestDashboard({
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.25em] text-gray-400">Predictive Analytics</p>
-                <h3 className="text-lg font-black text-church-green">Financial Forecast and Priest Demand View</h3>
+                <h3 className="text-lg font-black text-church-green">{entityLabel} Forecast and Risk Outlook</h3>
               </div>
-              <div className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-wide text-gray-500 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2">
-                <BrainCircuit size={12} />
-                <span>Forecasts fund availability and assistance demand</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
-              <div className="flex items-center justify-between mb-5">
-                <div>
-                  <h3 className="text-lg font-bold text-church-green">Available Fund Forecast</h3>
-                  <p className="text-xs font-semibold text-gray-500 mt-1">Historical fund balance with next-month forecast from the financial feature set.</p>
-                </div>
-              </div>
-              <AdvancedForecastChart
-                data={financialForecastData}
-                actualKey="fundActual"
-                forecastKey="fundForecast"
-                yAxisLabel="Fund"
-                title="Financial Forecast"
-                metrics={{ mae: 18500, rmse: 22400, mape: 8.7, mase: 0.42, wape: 7.9 }}
-              />
-            </div>
-
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
-              <div className="flex items-center justify-between mb-5">
-                <div>
-                  <h3 className="text-lg font-bold text-church-green">Assistance Request Forecast</h3>
-                  <p className="text-xs font-semibold text-gray-500 mt-1">Priest-facing demand forecast for financial aid requests.</p>
-                </div>
-                <span className="text-[9px] bg-orange-50 text-orange-700 px-2 py-1 rounded-lg font-black uppercase tracking-wider border border-orange-100">
-                  +18% June
-                </span>
-              </div>
-              <div className="h-[320px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={financialForecastData} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                    <XAxis dataKey="month" tick={{ fill: '#6B7280', fontSize: 10 }} />
-                    <YAxis tick={{ fill: '#6B7280', fontSize: 10 }} width={40} />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="requestActual" name="Actual Requests" fill="#1a472a" radius={[4, 4, 0, 0]} />
-                    <Line type="monotone" dataKey="requestForecast" name="Forecast Requests" stroke="#D4AF37" strokeWidth={3} strokeDasharray="7 4" dot={{ r: 3 }} />
-                  </ComposedChart>
-                </ResponsiveContainer>
+              <div className={`inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-wide rounded-lg px-3 py-2 border ${
+                predictiveSummary.riskLevel === 'High'
+                  ? 'text-red-700 bg-red-50 border-red-100'
+                  : predictiveSummary.riskLevel === 'Moderate'
+                    ? 'text-gold-700 bg-gold-50 border-gold-100'
+                    : 'text-emerald-700 bg-emerald-50 border-emerald-100'
+              }`}>
+                <AlertTriangle size={12} />
+                <span>{predictiveSummary.riskLevel} Forecast Risk</span>
               </div>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Projected June Fund</p>
-              <p className="text-3xl font-black text-church-green mt-2">{formatCurrency(157000)}</p>
-              <p className="text-xs font-semibold text-gray-500 mt-3">Expected balance after ordinary disbursements.</p>
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200 min-w-0">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-2">Next Collections</p>
+              <p className="text-[clamp(1.1rem,1.6vw,1.7rem)] font-black text-church-green whitespace-nowrap tracking-tight">{formatCurrency(predictiveSummary.forecastCollections)}</p>
+              <p className={`text-[10px] font-bold mt-2 ${predictiveSummary.collectionChange >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+                {predictiveSummary.collectionChange >= 0 ? '+' : ''}{predictiveSummary.collectionChange.toFixed(1)}% projected change
+              </p>
             </div>
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Expected Requests</p>
-              <p className="text-3xl font-black text-church-green mt-2">39</p>
-              <p className="text-xs font-semibold text-gray-500 mt-3">Forecasted financial assistance cases next month.</p>
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200 min-w-0">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-2">Next Disbursements</p>
+              <p className="text-[clamp(1.1rem,1.6vw,1.7rem)] font-black text-red-600 whitespace-nowrap tracking-tight">{formatCurrency(predictiveSummary.forecastDisbursements)}</p>
+              <p className="text-[10px] font-bold mt-2 text-gray-400">Projected operating pressure</p>
             </div>
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200 min-w-0">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-2">Forecast Net</p>
+              <p className={`text-[clamp(1.1rem,1.6vw,1.7rem)] font-black whitespace-nowrap tracking-tight ${predictiveSummary.forecastNet >= 0 ? 'text-emerald-700' : 'text-gold-700'}`}>
+                {formatCurrency(predictiveSummary.forecastNet)}
+              </p>
+              <p className="text-[10px] font-bold mt-2 text-gray-400">Collections less disbursements</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
             <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Shortage Risk</p>
-              <p className="text-3xl font-black text-red-600 mt-2">{formatCurrency(28000)}</p>
-              <p className="text-xs font-semibold text-gray-500 mt-3">Likely gap if all high-priority requests are approved in full.</p>
+              <div className="mb-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.25em] text-gray-400">Forecasting Engine</p>
+                <h3 className="text-lg font-black text-church-green">Monthly Collections Forecast</h3>
+              </div>
+              <AdvancedForecastChart
+                data={parishPredictiveData}
+                actualKey="collections"
+                forecastKey="forecast"
+                yAxisLabel="Collections"
+                title={`${entityInfo.name} collections forecast`}
+              />
+            </div>
+
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200">
+              <div className="mb-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.25em] text-gray-400">Expense Forecast</p>
+                <h3 className="text-lg font-black text-church-green">Monthly Disbursements Forecast</h3>
+              </div>
+              <AdvancedForecastChart
+                data={parishPredictiveData}
+                actualKey="disbursements"
+                forecastKey="disbursementsForecast"
+                yAxisLabel="Disbursements"
+                title={`${entityInfo.name} disbursements forecast`}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+              <div className="mb-5">
+                <p className="text-[10px] font-black uppercase tracking-[0.25em] text-gray-400">Cash Position</p>
+                <h3 className="text-lg font-black text-church-green">Projected Net Position</h3>
+              </div>
+              <div className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={parishPredictiveData} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
+                    <defs>
+                      <linearGradient id="parishNetForecastGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#D4AF37" stopOpacity={0.35} />
+                        <stop offset="95%" stopColor="#D4AF37" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                    <XAxis dataKey="month" tick={{ fill: '#6B7280', fontSize: 10 }} />
+                    <YAxis tick={{ fill: '#6B7280', fontSize: 10 }} tickFormatter={(value) => formatMillions(value)} width={55} />
+                    <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                    <ReferenceLine y={0} stroke="#9CA3AF" strokeDasharray="4 4" />
+                    <Area type="monotone" dataKey="netForecast" name="Forecast Net" stroke="#D4AF37" strokeWidth={3} fill="url(#parishNetForecastGradient)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+              <h3 className="text-lg font-black text-church-green mb-4">Predictive Insights</h3>
+              <div className="space-y-3">
+                <div className="p-4 rounded-xl bg-gold-50 border border-gold-100">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gold-700 mb-2">Collections Outlook</p>
+                  <p className="text-sm font-semibold text-gray-700">
+                    {predictiveSummary.collectionChange >= 0
+                      ? 'Collections are projected to improve in the next period.'
+                      : 'Collections may soften in the next period and need closer monitoring.'}
+                  </p>
+                </div>
+                <div className="p-4 rounded-xl bg-gray-50 border border-gray-100">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-2">Health Signal</p>
+                  <p className="text-sm font-semibold text-gray-700">
+                    Current health score is {healthScore?.compositeScore ?? 'not yet available'}, so the forecast should be reviewed with recent submission quality.
+                  </p>
+                </div>
+                <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-100">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700 mb-2">Recommended Watch</p>
+                  <p className="text-sm font-semibold text-gray-700">Compare forecast net against the next remittance and audit cycle.</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1785,28 +1807,27 @@ export function PriestDashboard({
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.25em] text-gray-400">Prescriptive Analytics</p>
-                <h3 className="text-lg font-black text-church-green">Financial Assistance Action Playbook</h3>
+                <h3 className="text-lg font-black text-church-green">{isPriestDashboardContext ? 'Priest Action Playbook' : `${entityLabel} Action Playbook`}</h3>
               </div>
               <div className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-wide text-gray-500 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2">
                 <Zap size={12} />
-                <span>Recommended approvals, allocation, and what-if actions</span>
+                <span>Recommended actions to improve stewardship</span>
               </div>
             </div>
           </div>
 
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
             <div className="flex items-center justify-between mb-5">
-              <h3 className="text-lg font-bold text-church-green">Recommended Budget Allocation</h3>
+              <h3 className="text-lg font-bold text-church-green">{isPriestDashboardContext ? 'Priest-Led Cost Optimization Opportunities' : `${entityLabel} Cost Optimization Opportunities`}</h3>
               <select
                 value={optimizationFilter}
-                onChange={(e) => setOptimizationFilter(e.target.value as 'all' | 'medical aid' | 'food support' | 'emergency cash' | 'education aid')}
+                onChange={(e) => setOptimizationFilter(e.target.value as 'all' | 'personnel' | 'utilities' | 'programs')}
                 className="bg-gray-100 border-none text-[10px] font-bold text-church-green rounded-lg px-3 py-2 outline-none cursor-pointer hover:bg-gray-200 transition-colors"
               >
                 <option value="all">ALL CATEGORIES</option>
-                <option value="medical aid">MEDICAL AID</option>
-                <option value="food support">FOOD SUPPORT</option>
-                <option value="emergency cash">EMERGENCY CASH</option>
-                <option value="education aid">EDUCATION AID</option>
+                <option value="personnel">PERSONNEL</option>
+                <option value="utilities">UTILITIES</option>
+                <option value="programs">PROGRAMS</option>
               </select>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -1818,81 +1839,37 @@ export function PriestDashboard({
                 .map((row) => (
                   <div key={row.category} className="p-4 rounded-xl bg-gray-50 border border-gray-100">
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-2">{row.category}</p>
-                    <p className="text-xs text-gray-500 font-bold">Current Allocation: {formatCurrency(row.current)}</p>
-                    <p className="text-xs text-gray-500 font-bold">Recommended: {formatCurrency(row.optimized)}</p>
-                    <p className="text-sm font-black text-emerald-700 mt-2">
-                      {row.savings > 0 ? `Reallocate: ${formatCurrency(row.savings)}` : 'Protect budget'}
-                    </p>
+                    <p className="text-xs text-gray-500 font-bold">Current: {formatCurrency(row.current)}</p>
+                    <p className="text-xs text-gray-500 font-bold">Optimized: {formatCurrency(row.optimized)}</p>
+                    <p className="text-sm font-black text-emerald-700 mt-2">Savings: {formatCurrency(row.savings)}</p>
                   </div>
                 ))}
             </div>
           </div>
 
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
-            <h3 className="text-lg font-bold text-church-green mb-5">Financial Assistance Priority List</h3>
+            <h3 className="text-lg font-bold text-church-green mb-5">{isPriestDashboardContext ? 'Priest Seasonal Expense Risk Calendar' : `${entityLabel} Seasonal Expense Risk Calendar`}</h3>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 border-b border-gray-100">
-                    <th className="py-3 pr-4">Beneficiary</th>
-                    <th className="py-3 pr-4">Risk</th>
-                    <th className="py-3 pr-4">Reason</th>
-                    <th className="py-3 pr-4">Recommended Action</th>
-                    <th className="py-3 text-right">Amount</th>
+                    <th className="py-3 pr-4">Event</th>
+                    <th className="py-3 pr-4">Month</th>
+                    <th className="py-3 pr-4">Expected Increase</th>
+                    <th className="py-3">Primary Cost Driver</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {aidPriorityData.map((item) => (
-                    <tr key={item.beneficiary} className="border-b border-gray-50">
-                      <td className="py-3 pr-4 font-bold text-church-green">{item.beneficiary}</td>
-                      <td className="py-3 pr-4">
-                        <span className={`text-[9px] px-2 py-1 rounded-lg font-black uppercase tracking-wider border ${
-                          item.risk === 'High'
-                            ? 'bg-red-50 text-red-700 border-red-100'
-                            : 'bg-orange-50 text-orange-700 border-orange-100'
-                        }`}>
-                          {item.risk}
-                        </span>
-                      </td>
-                      <td className="py-3 pr-4 text-gray-600 font-semibold">{item.reason}</td>
-                      <td className="py-3 pr-4 text-gray-600">{item.action}</td>
-                      <td className="py-3 text-right font-black text-church-green">{formatCurrency(item.amount)}</td>
+                  {seasonalExpenseSpikes.map((item) => (
+                    <tr key={item.event} className="border-b border-gray-50">
+                      <td className="py-3 pr-4 font-bold text-church-green">{item.event}</td>
+                      <td className="py-3 pr-4 text-gray-600 font-semibold">{item.month}</td>
+                      <td className="py-3 pr-4 text-orange-700 font-bold">{item.expectedIncrease}</td>
+                      <td className="py-3 text-gray-600">{item.driver}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
-              <h3 className="text-lg font-bold text-church-green mb-5">Allocation Share Recommendation</h3>
-              <div className="space-y-4">
-                {budgetAllocationData.map((item) => (
-                  <div key={item.category}>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-black uppercase tracking-wide text-gray-600">{item.category}</span>
-                      <span className="text-xs font-black text-church-green">{formatCurrency(item.suggested)} · {item.share}%</span>
-                    </div>
-                    <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
-                      <div className="h-full rounded-full bg-gold-500" style={{ width: `${item.share}%` }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
-              <h3 className="text-lg font-bold text-church-green mb-5">AI Twin What-if Analysis</h3>
-              <div className="space-y-3">
-                {whatIfScenarios.map((item) => (
-                  <div key={item.scenario} className="p-4 rounded-xl bg-gray-50 border border-gray-100">
-                    <p className="text-xs font-black text-church-green">{item.scenario}</p>
-                    <p className="text-xs font-bold text-orange-700 mt-1">{item.impact}</p>
-                    <p className="text-xs text-gray-600 font-semibold mt-2">{item.decision}</p>
-                  </div>
-                ))}
-              </div>
             </div>
           </div>
         </div>
