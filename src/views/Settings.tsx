@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import React, { useState } from 'react';
-import { Users, Shield, LogOut, UserPlus, Edit2, Save, Trash2, Database, ArrowRight, UserCog, Eye, Plus, Pencil, Trash, Search, ShieldCheck, Building2, TrendingUp } from 'lucide-react';
+import { Users, UserPlus, Save, Database, ArrowRight, Pencil, Search, ShieldCheck } from 'lucide-react';
 
 import { Role } from '../App';
 import { UserRole, Parish, Seminary, DiocesanSchool } from '../types';
@@ -78,21 +78,86 @@ export function Settings({ onBack, onLogout, onNavigate, role = 'bishop', initia
   }, []);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
   const [accountToArchive, setAccountToArchive] = useState<number | null>(null);
   const [editingAccountId, setEditingAccountId] = useState<number | null>(null);
   const [showAccountSuccess, setShowAccountSuccess] = useState<{show: boolean, message: string}>({ show: false, message: '' });
   const [showPasswordSuccess, setShowPasswordSuccess] = useState(false);
+  const [showProfileSuccess, setShowProfileSuccess] = useState(false);
   const [passwords, setPasswords] = useState({ current: '', new: '' });
   const [viewMode, setViewMode] = useState<'active' | 'archived'>('active');
+  const [profileForm, setProfileForm] = useState(() => {
+    const currentUser = auth.currentUser || {};
+    const nameParts = (currentUser.displayName || '').split(' ').filter(Boolean);
+    return {
+      firstName: currentUser.firstName || nameParts[0] || '',
+      lastName: currentUser.lastName || nameParts.slice(1).join(' ') || '',
+      nickName: currentUser.nickName || '',
+      email: currentUser.email || '',
+      contactNumber: currentUser.contactNumber || '',
+      address: currentUser.address || '',
+      position: currentUser.position || currentUser.roleLabel || '',
+      entityName: currentUser.entityName || '',
+      emergencyContact: currentUser.emergencyContact || '',
+      notes: currentUser.notes || ''
+    };
+  });
 
   const handleUpdatePassword = () => {
     if (passwords.current && passwords.new) {
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        const updatedUser = {
+          ...currentUser,
+          passwordUpdatedAt: new Date().toISOString()
+        };
+        localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+
+        const storedUsers = JSON.parse(localStorage.getItem('users') || '[]');
+        const updatedUsers = storedUsers.map((user: any) =>
+          user.email?.toLowerCase() === currentUser.email?.toLowerCase()
+            ? { ...user, passwordUpdatedAt: updatedUser.passwordUpdatedAt }
+            : user
+        );
+        localStorage.setItem('users', JSON.stringify(updatedUsers));
+      }
       setShowPasswordSuccess(true);
       setPasswords({ current: '', new: '' });
       setTimeout(() => setShowPasswordSuccess(false), 3000);
     }
+  };
+
+  const handleProfileSave = (event: React.FormEvent) => {
+    event.preventDefault();
+    const currentUser = auth.currentUser || {};
+    const displayName = [profileForm.firstName, profileForm.lastName].filter(Boolean).join(' ') || currentUser.displayName || profileForm.email;
+    const updatedUser = {
+      ...currentUser,
+      ...profileForm,
+      displayName,
+      email: profileForm.email,
+      entityName: profileForm.entityName || currentUser.entityName,
+      updatedAt: new Date().toISOString()
+    };
+
+    localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+
+    const storedUsers = JSON.parse(localStorage.getItem('users') || '[]');
+    const updatedUsers = storedUsers.map((user: any) =>
+      user.email?.toLowerCase() === currentUser.email?.toLowerCase() || user.id === currentUser.id || user.uid === currentUser.uid
+        ? {
+            ...user,
+            ...profileForm,
+            email: profileForm.email,
+            displayName,
+            entityName: profileForm.entityName || user.entityName
+          }
+        : user
+    );
+    localStorage.setItem('users', JSON.stringify(updatedUsers));
+    window.dispatchEvent(new Event('storage_update'));
+    setShowProfileSuccess(true);
+    setTimeout(() => setShowProfileSuccess(false), 3000);
   };
 
   // Auto-save roles when they change
@@ -291,35 +356,6 @@ export function Settings({ onBack, onLogout, onNavigate, role = 'bishop', initia
           </div>
         </div>
       )}
-      {isLogoutModalOpen && (
-        <div className="fixed inset-0 bg-black/50 z-[110] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="p-8 text-center space-y-6">
-              <div className="w-16 h-16 bg-rose-50 rounded-full flex items-center justify-center mx-auto">
-                <LogOut className="w-8 h-8 text-rose-500" />
-              </div>
-              <div className="space-y-2">
-                <h3 className="text-2xl font-serif font-bold text-gray-900">Sign Out</h3>
-                <p className="text-gray-500">Are you sure you wanna log out?</p>
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button 
-                  onClick={() => setIsLogoutModalOpen(false)}
-                  className="flex-1 px-6 py-3 border border-gray-200 rounded-xl font-bold text-gray-500 hover:bg-gray-50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button 
-                  onClick={onLogout}
-                  className="flex-1 px-6 py-3 bg-rose-500 text-white rounded-xl font-bold hover:bg-rose-600 transition-colors shadow-md"
-                >
-                  Log Out
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
       {/* Modal Overlay */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
@@ -412,111 +448,155 @@ export function Settings({ onBack, onLogout, onNavigate, role = 'bishop', initia
           </div>
         </div>
       )}
-      {/* Sub-header */}
-      <div className="bg-white border-b border-gray-200 px-8 py-10">
-        <div className="max-w-[1600px] mx-auto flex items-center justify-between">
-          <div className="space-y-1">
-            <h2 className="text-4xl font-serif font-bold text-gray-900 tracking-tight">Account & Settings</h2>
-            <p className="text-sm text-gray-500 font-medium">Manage your diocese personnel, roles, and system data.</p>
-          </div>
-          <button 
-            onClick={onBack}
-            className="flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-[#D4AF37] hover:text-[#B8962E] hover:bg-[#D4AF37]/5 rounded-xl transition-all group"
-          >
-            <ArrowRight className="w-4 h-4 rotate-180 group-hover:-translate-x-1 transition-transform" />
-            Back to Dashboard
-          </button>
-        </div>
-      </div>
-
       {/* Main Content */}
-      <div className="flex-1 max-w-[1600px] mx-auto w-full px-8 py-12 flex gap-12">
-        {/* Sidebar */}
-        <div className="w-72 flex-shrink-0 flex flex-col gap-1.5">
-          {(role === 'bishop' || role === 'admin') && (
-            <>
-              <button
-                onClick={() => setActiveTab('user-management')}
-                className={`flex items-center gap-3 px-5 py-4 rounded-2xl font-bold transition-all text-left ${
-                  activeTab === 'user-management' 
-                    ? 'bg-[#D4AF37] text-white shadow-xl shadow-[#D4AF37]/20' 
-                    : 'text-gray-500 hover:bg-white hover:text-gray-900'
-                }`}
-              >
-                <Users className={`w-5 h-5 ${activeTab === 'user-management' ? 'text-white' : 'text-gray-400'}`} />
-                User Management
-              </button>
-              <button
-                onClick={() => setActiveTab('role-control')}
-                className={`flex items-center gap-3 px-5 py-4 rounded-2xl font-bold transition-all text-left ${
-                  activeTab === 'role-control' 
-                    ? 'bg-[#D4AF37] text-white shadow-xl shadow-[#D4AF37]/20' 
-                    : 'text-gray-500 hover:bg-white hover:text-gray-900'
-                }`}
-              >
-                <UserCog className={`w-5 h-5 ${activeTab === 'role-control' ? 'text-white' : 'text-gray-400'}`} />
-                User Role Control
-              </button>
-              <button
-                onClick={() => setActiveTab('entity-management')}
-                className={`flex items-center gap-3 px-5 py-4 rounded-2xl font-bold transition-all text-left ${
-                  activeTab === 'entity-management' 
-                    ? 'bg-[#D4AF37] text-white shadow-xl shadow-[#D4AF37]/20' 
-                    : 'text-gray-500 hover:bg-white hover:text-gray-900'
-                }`}
-              >
-                <Building2 className={`w-5 h-5 ${activeTab === 'entity-management' ? 'text-white' : 'text-gray-400'}`} />
-                Entity Management
-              </button>
-              <button
-                onClick={() => setActiveTab('data-management')}
-                className={`flex items-center gap-3 px-5 py-4 rounded-2xl font-bold transition-all text-left ${
-                  activeTab === 'data-management' 
-                    ? 'bg-[#D4AF37] text-white shadow-xl shadow-[#D4AF37]/20' 
-                    : 'text-gray-500 hover:bg-white hover:text-gray-900'
-                }`}
-              >
-                <Database className={`w-5 h-5 ${activeTab === 'data-management' ? 'text-white' : 'text-gray-400'}`} />
-                Data Management
-              </button>
-              <button
-                onClick={() => setActiveTab('parish-classification')}
-                className={`flex items-center gap-3 px-5 py-4 rounded-2xl font-bold transition-all text-left ${
-                  activeTab === 'parish-classification' 
-                    ? 'bg-[#D4AF37] text-white shadow-xl shadow-[#D4AF37]/20' 
-                    : 'text-gray-500 hover:bg-white hover:text-gray-900'
-                }`}
-              >
-                <TrendingUp className={`w-5 h-5 ${activeTab === 'parish-classification' ? 'text-white' : 'text-gray-400'}`} />
-                Parish Classification
-              </button>
-            </>
-          )}
-          <button
-            onClick={() => setActiveTab('security')}
-            className={`flex items-center gap-3 px-5 py-4 rounded-2xl font-bold transition-all text-left ${
-              activeTab === 'security' 
-                ? 'bg-[#D4AF37] text-white shadow-xl shadow-[#D4AF37]/20' 
-                : 'text-gray-500 hover:bg-white hover:text-gray-900'
-            }`}
-          >
-            <Shield className={`w-5 h-5 ${activeTab === 'security' ? 'text-white' : 'text-gray-400'}`} />
-            Security
-          </button>
-          
-          <div className="h-px bg-gray-200 my-8 mx-5"></div>
-          
-          <button 
-            onClick={() => setIsLogoutModalOpen(true)}
-            className="flex items-center gap-3 px-5 py-4 rounded-2xl font-bold text-rose-500 hover:bg-rose-50 transition-all text-left"
-          >
-            <LogOut className="w-5 h-5" />
-            Sign out
-          </button>
-        </div>
+      <div className="flex-1 max-w-[1600px] mx-auto w-full px-8 py-8">
+        <div className="w-full min-w-0">
+          {activeTab === 'profile' && (
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+              <form onSubmit={handleProfileSave} className="xl:col-span-2 bg-white rounded-[32px] shadow-sm border border-gray-100 p-10">
+                <div className="flex items-start justify-between gap-6 mb-10">
+                  <div>
+                    <h3 className="text-3xl font-serif font-bold text-gray-900">My Profile</h3>
+                    <p className="text-sm text-gray-500 mt-1">Manage your personal information and contact details.</p>
+                  </div>
+                  <div className="w-16 h-16 rounded-2xl bg-gold-500 text-black flex items-center justify-center text-2xl font-black shadow-lg shadow-gold-500/20 shrink-0">
+                    {(profileForm.firstName || profileForm.email || 'U').charAt(0).toUpperCase()}
+                  </div>
+                </div>
 
-        {/* Content Area */}
-        <div className="flex-1 min-w-0">
+                {showProfileSuccess && (
+                  <div className="mb-8 p-5 bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-2xl text-sm font-bold animate-in fade-in slide-in-from-top-2 flex items-center gap-3">
+                    <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <ShieldCheck className="w-5 h-5" />
+                    </div>
+                    Profile updated successfully!
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {[
+                    { id: 'firstName', label: 'First Name', type: 'text', placeholder: 'First name' },
+                    { id: 'lastName', label: 'Last Name', type: 'text', placeholder: 'Last name' },
+                    { id: 'nickName', label: 'Nick Name', type: 'text', placeholder: 'Preferred name' },
+                    { id: 'email', label: 'Email Address', type: 'email', placeholder: 'name@diocese.ph' },
+                    { id: 'contactNumber', label: 'Contact Number', type: 'tel', placeholder: '+63 900 000 0000' },
+                    { id: 'position', label: 'Position / Role', type: 'text', placeholder: 'Parish Priest, Admin, etc.' },
+                    { id: 'entityName', label: 'Assigned Entity', type: 'text', placeholder: 'Parish, school, seminary, or office' },
+                    { id: 'emergencyContact', label: 'Emergency Contact', type: 'text', placeholder: 'Name and number' },
+                  ].map((field) => (
+                    <div key={field.id} className="space-y-2">
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">{field.label}</label>
+                      <input
+                        type={field.type}
+                        value={(profileForm as any)[field.id]}
+                        onChange={(event) => setProfileForm(prev => ({ ...prev, [field.id]: event.target.value }))}
+                        placeholder={field.placeholder}
+                        className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl text-gray-900 focus:outline-none focus:border-[#D4AF37] focus:ring-4 focus:ring-[#D4AF37]/10 transition-all font-medium placeholder:text-gray-300"
+                      />
+                    </div>
+                  ))}
+
+                  <div className="md:col-span-2 space-y-2">
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Address</label>
+                    <input
+                      type="text"
+                      value={profileForm.address}
+                      onChange={(event) => setProfileForm(prev => ({ ...prev, address: event.target.value }))}
+                      placeholder="Complete address"
+                      className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl text-gray-900 focus:outline-none focus:border-[#D4AF37] focus:ring-4 focus:ring-[#D4AF37]/10 transition-all font-medium placeholder:text-gray-300"
+                    />
+                  </div>
+
+                  <div className="md:col-span-2 space-y-2">
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Additional Notes</label>
+                    <textarea
+                      value={profileForm.notes}
+                      onChange={(event) => setProfileForm(prev => ({ ...prev, notes: event.target.value }))}
+                      placeholder="Office hours, alternate contact, or other profile notes"
+                      rows={4}
+                      className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl text-gray-900 focus:outline-none focus:border-[#D4AF37] focus:ring-4 focus:ring-[#D4AF37]/10 transition-all font-medium placeholder:text-gray-300 resize-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end mt-8">
+                  <button
+                    type="submit"
+                    className="bg-[#D4AF37] text-white px-8 py-4 rounded-2xl font-bold hover:bg-[#B5952F] transition-all shadow-lg shadow-[#D4AF37]/20 flex items-center justify-center gap-3 active:scale-[0.98]"
+                  >
+                    <Save className="w-5 h-5" />
+                    Save Profile
+                  </button>
+                </div>
+              </form>
+
+              <div className="space-y-8">
+                <div className="bg-white rounded-[32px] shadow-sm border border-gray-100 p-8">
+                  <h4 className="text-lg font-bold text-gray-900 mb-6">Account Details</h4>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Access Role</p>
+                      <p className="text-sm font-bold text-gray-900 mt-1">{auth.currentUser?.roleLabel || profileForm.position || 'User'}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Status</p>
+                      <span className="inline-flex mt-2 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase tracking-wider border border-emerald-100">
+                        {auth.currentUser?.status || 'Active'}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Entity Type</p>
+                      <p className="text-sm font-bold text-gray-900 mt-1 capitalize">{auth.currentUser?.entityType || 'Diocese'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-[32px] shadow-sm border border-gray-100 p-8">
+                  <h4 className="text-lg font-bold text-gray-900 mb-2">Change Password</h4>
+                  <p className="text-sm text-gray-500 mb-6">Update the password used for this account.</p>
+
+                  {showPasswordSuccess && (
+                    <div className="mb-6 p-4 bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-2xl text-sm font-bold flex items-center gap-3">
+                      <ShieldCheck className="w-5 h-5" />
+                      Password updated successfully!
+                    </div>
+                  )}
+
+                  <div className="space-y-5">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Current Password</label>
+                      <input
+                        type="password"
+                        value={passwords.current}
+                        onChange={(event) => setPasswords(prev => ({ ...prev, current: event.target.value }))}
+                        placeholder="••••••••"
+                        className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl text-gray-900 focus:outline-none focus:border-[#D4AF37] focus:ring-4 focus:ring-[#D4AF37]/10 transition-all font-medium placeholder:text-gray-300"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">New Password</label>
+                      <input
+                        type="password"
+                        value={passwords.new}
+                        onChange={(event) => setPasswords(prev => ({ ...prev, new: event.target.value }))}
+                        placeholder="••••••••"
+                        className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl text-gray-900 focus:outline-none focus:border-[#D4AF37] focus:ring-4 focus:ring-[#D4AF37]/10 transition-all font-medium placeholder:text-gray-300"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleUpdatePassword}
+                      className="w-full bg-gray-900 text-white px-8 py-4 rounded-2xl font-bold hover:bg-black transition-all flex items-center justify-center gap-3 active:scale-[0.98]"
+                    >
+                      <Save className="w-5 h-5" />
+                      Update Password
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'user-management' && (
             <div className="bg-white rounded-[40px] shadow-sm border border-gray-100 p-12">
               <div className="flex items-center justify-between mb-12">

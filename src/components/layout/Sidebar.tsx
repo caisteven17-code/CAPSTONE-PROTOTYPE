@@ -1,21 +1,25 @@
 ﻿'use client';
 
 import React from 'react';
-import { 
-  Home, 
-  Church, 
-  BookOpen, 
-  GraduationCap, 
-  Briefcase, 
+import {
+  Home,
+  Church,
+  BookOpen,
+  GraduationCap,
+  Briefcase,
   Settings,
   ChevronDown,
-  Check,
   User,
   Bell,
   FileText,
   BarChart3,
   Heart,
-  Zap
+  Zap,
+  ScrollText,
+  Users,
+  UserCog,
+  Shield,
+  LogOut
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { APP_CONFIG } from '../../constants';
@@ -24,6 +28,7 @@ import { Timeframe } from '../../App';
 interface SidebarProps {
   activeTab: string;
   onNavigate: (tab: string) => void;
+  onLogout?: () => void;
   role: string;
   timeframe?: Timeframe;
   onTimeframeChange?: (timeframe: Timeframe) => void;
@@ -36,9 +41,10 @@ const TIMEFRAME_LABELS: Record<Timeframe, string> = {
   'all': 'All Time'
 } as const;
 
-export function Sidebar({ 
-  activeTab, 
-  onNavigate, 
+export function Sidebar({
+  activeTab = '',
+  onNavigate,
+  onLogout,
   role,
   timeframe = '6m',
   onTimeframeChange
@@ -48,6 +54,8 @@ export function Sidebar({
   const [showPriestDropdown, setShowPriestDropdown] = React.useState(activeTab.startsWith('priest'));
   const [showSeminaryDropdown, setShowSeminaryDropdown] = React.useState(activeTab === 'seminaries' || activeTab.startsWith('seminary-'));
   const [showSchoolDropdown, setShowSchoolDropdown] = React.useState(activeTab === 'school' || activeTab.startsWith('school-'));
+  const isAdminTab = (t: string) => t.startsWith('admin-') || t === 'settings' || t === 'audit-log';
+  const [showAdminDropdown, setShowAdminDropdown] = React.useState(isAdminTab(activeTab));
 
   // Auto-expand dropdowns for their active sections
   React.useEffect(() => {
@@ -55,6 +63,7 @@ export function Sidebar({
     setShowPriestDropdown(activeTab.startsWith('priest'));
     setShowSeminaryDropdown(activeTab === 'seminaries' || activeTab.startsWith('seminary-'));
     setShowSchoolDropdown(activeTab === 'school' || activeTab.startsWith('school-'));
+    if (isAdminTab(activeTab)) setShowAdminDropdown(true);
   }, [activeTab]);
 
   /**
@@ -86,21 +95,11 @@ export function Sidebar({
     { id: 'school-aitwin', label: 'Digital Twin', icon: Zap },
   ];
 
-  const navItems = [
-    { id: 'home', label: 'Home', icon: Home },
-    { id: 'projects', label: 'Projects', icon: Briefcase },
-    { id: 'announcements', label: 'Announcements', icon: Bell },
-  ];
-
   const hasDioceseAccess = role === 'bishop' || role === 'admin';
   const canViewParishes = hasDioceseAccess || role === 'priest';
   const canViewPriests = hasDioceseAccess || role === 'priest';
   const canViewSeminaries = hasDioceseAccess || role === 'seminary';
   const canViewSchools = hasDioceseAccess || role === 'school';
-  const primaryNavItem = navItems.find((item) => item.id === (role === 'priest' ? 'announcements' : 'home'));
-  const secondaryNavItems = role === 'priest'
-    ? navItems.filter((item) => item.id === 'projects')
-    : navItems.filter((item) => item.id !== 'home');
 
   return (
     <aside className="hidden md:flex flex-col w-64 bg-black text-white h-screen sticky top-0 left-0 z-40 shadow-2xl border-r border-white/5">
@@ -127,17 +126,17 @@ export function Sidebar({
       </div>
 
       {/* Navigation Section */}
-      <nav className="flex-1 px-3 space-y-1">
-        {/* Primary Navigation */}
+      <nav className="flex-1 px-3 space-y-1 overflow-y-auto scrollbar-none">
+        {/* Home (bishop/admin) or Announcements (priest) — always first */}
         {(() => {
-          if (!primaryNavItem) return null;
-          const Icon = primaryNavItem.icon;
-          const isActive = activeTab === primaryNavItem.id;
-
+          const item = role === 'priest'
+            ? { id: 'announcements', label: 'Announcements', icon: Bell }
+            : { id: 'home', label: 'Home', icon: Home };
+          const Icon = item.icon;
+          const isActive = activeTab === item.id;
           return (
             <button
-              key={primaryNavItem.id}
-              onClick={() => onNavigate(primaryNavItem.id)}
+              onClick={() => onNavigate(item.id)}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group ${
                 isActive
                   ? 'bg-white/10 text-gold-400 shadow-sm'
@@ -145,7 +144,28 @@ export function Sidebar({
               }`}
             >
               <Icon className={`w-4 h-4 transition-colors ${isActive ? 'text-gold-400' : 'text-white/20 group-hover:text-white/40'}`} />
-              <span className="text-xs font-bold tracking-wide">{primaryNavItem.label}</span>
+              <span className="text-xs font-bold tracking-wide">{item.label}</span>
+              {isActive && (
+                <div className="ml-auto w-1.5 h-1.5 bg-gold-400 rounded-full shadow-[0_0_8px_rgba(212,175,55,0.6)]" />
+              )}
+            </button>
+          );
+        })()}
+
+        {/* Announcements — right after Home for bishop/admin */}
+        {hasDioceseAccess && (() => {
+          const isActive = activeTab === 'announcements';
+          return (
+            <button
+              onClick={() => onNavigate('announcements')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group ${
+                isActive
+                  ? 'bg-white/10 text-gold-400 shadow-sm'
+                  : 'text-white/50 hover:bg-white/5 hover:text-white'
+              }`}
+            >
+              <Bell className={`w-4 h-4 transition-colors ${isActive ? 'text-gold-400' : 'text-white/20 group-hover:text-white/40'}`} />
+              <span className="text-xs font-bold tracking-wide">Announcements</span>
               {isActive && (
                 <div className="ml-auto w-1.5 h-1.5 bg-gold-400 rounded-full shadow-[0_0_8px_rgba(212,175,55,0.6)]" />
               )}
@@ -424,44 +444,100 @@ export function Sidebar({
           </AnimatePresence>
         </div>
 
-        {/* Other Navigation Items */}
-        {secondaryNavItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = activeTab === item.id;
-          
+        {/* Projects */}
+        {(() => {
+          const isActive = activeTab === 'projects';
           return (
             <button
-              key={item.id}
-              onClick={() => onNavigate(item.id)}
+              onClick={() => onNavigate('projects')}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group ${
-                isActive 
-                  ? 'bg-white/10 text-gold-400 shadow-sm' 
+                isActive
+                  ? 'bg-white/10 text-gold-400 shadow-sm'
                   : 'text-white/50 hover:bg-white/5 hover:text-white'
               }`}
             >
-              <Icon className={`w-4 h-4 transition-colors ${isActive ? 'text-gold-400' : 'text-white/20 group-hover:text-white/40'}`} />
-              <span className="text-xs font-bold tracking-wide">{item.label}</span>
+              <Briefcase className={`w-4 h-4 transition-colors ${isActive ? 'text-gold-400' : 'text-white/20 group-hover:text-white/40'}`} />
+              <span className="text-xs font-bold tracking-wide">Projects</span>
               {isActive && (
                 <div className="ml-auto w-1.5 h-1.5 bg-gold-400 rounded-full shadow-[0_0_8px_rgba(212,175,55,0.6)]" />
               )}
             </button>
           );
-        })}
+        })()}
+
+        {/* Administration Dropdown */}
+        {hasDioceseAccess && (
+          <div>
+            <div className={`w-full flex items-center gap-3 rounded-xl transition-all duration-300 ${
+              isAdminTab(activeTab) ? 'bg-white/10 text-gold-400' : 'text-white/50'
+            }`}>
+              <button
+                onClick={() => { onNavigate('admin-user-management'); setShowAdminDropdown(true); }}
+                className="flex-1 flex items-center gap-3 px-4 py-3 hover:text-white transition-colors group"
+              >
+                <Settings className={`w-4 h-4 transition-colors ${isAdminTab(activeTab) ? 'text-gold-400' : 'text-white/20 group-hover:text-white/40'}`} />
+                <span className="text-xs font-bold tracking-wide">Administration</span>
+              </button>
+              <button
+                onClick={() => setShowAdminDropdown(v => !v)}
+                className="px-3 py-3 hover:bg-white/10 rounded-r-xl transition-colors"
+              >
+                <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${showAdminDropdown ? 'rotate-180' : ''}`} />
+              </button>
+              {isAdminTab(activeTab) && (
+                <div className="absolute right-3 w-1.5 h-1.5 bg-gold-400 rounded-full shadow-[0_0_8px_rgba(212,175,55,0.6)]" />
+              )}
+            </div>
+            <AnimatePresence>
+              {showAdminDropdown && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="mt-1 pl-6 space-y-0"
+                >
+                  {[
+                    { id: 'admin-user-management', label: 'User Management',   icon: Users,      show: true },
+                    { id: 'admin-user-role',       label: 'User Role Control', icon: UserCog,    show: true },
+                    { id: 'admin-entity',          label: 'Entity Management', icon: FileText,   show: true },
+                    { id: 'admin-data',            label: 'Data Management',   icon: FileText,   show: true },
+                    { id: 'audit-log',             label: 'Audit Log',         icon: ScrollText, show: role === 'admin' },
+                  ].filter(item => item.show).map(item => {
+                    const Icon = item.icon;
+                    const active = activeTab === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => onNavigate(item.id)}
+                        className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                          active ? 'text-gold-400 bg-white/5' : 'text-white/40 hover:text-white/80 hover:bg-white/5'
+                        }`}
+                      >
+                        <Icon className={`w-3.5 h-3.5 ${active ? 'text-gold-400' : 'text-white/20'}`} />
+                        {item.label}
+                        {active && <div className="ml-auto w-1 h-1 bg-gold-400 rounded-full" />}
+                      </button>
+                    );
+                  })}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
       </nav>
 
-      {/* Bottom Section */}
+      {/* Bottom Section — Sign Out only */}
       <div className="p-4 border-t border-white/5">
-        <button
-          onClick={() => onNavigate('settings')}
-          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group ${
-            activeTab === 'settings' 
-              ? 'bg-white/10 text-gold-400' 
-              : 'text-white/50 hover:bg-white/5 hover:text-white'
-          }`}
-        >
-          <Settings className="w-4 h-4 transition-colors group-hover:text-white/40" />
-          <span className="text-xs font-bold tracking-wide">Settings</span>
-        </button>
+        {onLogout && (
+          <button
+            onClick={onLogout}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group text-rose-400/70 hover:bg-rose-500/10 hover:text-rose-400"
+          >
+            <LogOut className="w-4 h-4 text-rose-400/40 group-hover:text-rose-400 transition-colors" />
+            <span className="text-xs font-bold tracking-wide">Sign Out</span>
+          </button>
+        )}
       </div>
     </aside>
   );

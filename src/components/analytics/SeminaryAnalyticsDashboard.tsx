@@ -3,18 +3,19 @@
 import React, { useState, useMemo } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  LineChart, Line, AreaChart, Area, PieChart, Pie, Cell, ComposedChart,
-  Treemap, ErrorBar, ScatterChart, Scatter,
+  LineChart, Line, AreaChart, Area, ComposedChart,
   ReferenceArea, ReferenceLine
 } from 'recharts';
 import {
   TrendingUp, TrendingDown, DollarSign, Users, AlertTriangle,
-  ArrowUpRight, Shield, Zap, Activity,
-  Wallet, PieChart as PieChartIcon, BarChart2, Lightbulb,
-  ChevronDown, Cpu
+  ArrowUpRight, ArrowDownRight, Shield, Zap, Activity,
+  Wallet, PieChart as PieChartIcon, BarChart2,
+  ChevronDown, Cpu, HeartPulse, BrainCircuit
 } from 'lucide-react';
 import { COLORS } from '../../constants';
 import { seminaryMockData, CHART_COLORS } from '../../utils/seminaryMockData';
+import { FinancialHealthGauge } from '../ui/FinancialHealthGauge';
+import { HealthDimensionBar } from '../ui/HealthDimensionBar';
 
 // ============================================================================
 // UTILS & FORMATTERS
@@ -204,6 +205,7 @@ const SeminaryForecastChart = ({
         </ResponsiveContainer>
       </div>
 
+
       <div className="mt-8 bg-gray-50/50 rounded-xl p-4 border border-gray-100">
         <div className="flex items-center justify-between mb-3 px-1">
           <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Model Performance Metrics</span>
@@ -216,7 +218,6 @@ const SeminaryForecastChart = ({
           <table className="w-full text-[11px]">
             <thead>
               <tr className="text-gray-400 uppercase tracking-wider font-bold">
-                <th className="text-left pb-2 pl-2">Model Architecture</th>
                 <th className="text-center pb-2">MAE</th>
                 <th className="text-center pb-2">RMSE</th>
                 <th className="text-center pb-2">MAPE%</th>
@@ -227,20 +228,12 @@ const SeminaryForecastChart = ({
             </thead>
             <tbody className="text-church-black font-semibold">
               <tr className="bg-white rounded-lg shadow-sm">
-                <td className="py-3 pl-3 rounded-l-lg border-y border-l border-gray-100">
-                  <div className="flex items-center gap-2">
-                    <div className="p-1 bg-amber-50 rounded">
-                      <Cpu className="w-3 h-3 text-amber-600" />
-                    </div>
-                    <span>LSTM + Seasonal-Naive Blend</span>
-                  </div>
-                </td>
                 <td className="text-center py-3 border-y border-gray-100">{metrics.mae}</td>
                 <td className="text-center py-3 border-y border-gray-100">{metrics.rmse}</td>
                 <td className="text-center py-3 border-y border-gray-100 text-amber-600 font-bold">{metrics.mape}%</td>
                 <td className="text-center py-3 border-y border-gray-100">{metrics.mase}</td>
                 <td className="text-center py-3 border-y border-gray-100">{metrics.wape}%</td>
-                <td className="text-center py-3 pr-3 rounded-r-lg border-y border-r border-gray-100">{metrics.mpe}%</td>
+                <td className="text-center py-3 pr-3 border-y border-r border-gray-100">{metrics.mpe}%</td>
               </tr>
             </tbody>
           </table>
@@ -276,13 +269,18 @@ const SeminaryForecastChart = ({
 // MAIN DASHBOARD COMPONENT
 // ============================================================================
 
-export default function SeminaryAnalyticsDashboard({ 
-  activeTab = 0, 
-  onTabChange 
-}: { 
-  activeTab?: number, 
-  onTabChange?: (tab: number) => void 
+export default function SeminaryAnalyticsDashboard({
+  activeTab = 0,
+  onTabChange,
+  lockEntityFilter = false,
+  filterMode = 'all',
+}: {
+  activeTab?: number;
+  onTabChange?: (tab: number) => void;
+  lockEntityFilter?: boolean;
+  filterMode?: 'all' | 'per-entity';
 }) {
+  const isDioceseWide = !lockEntityFilter && filterMode !== 'per-entity';
   const [localTab, setLocalTab] = useState(0);
   const currentTab = onTabChange ? activeTab : localTab;
   const setActiveTab = onTabChange || setLocalTab;
@@ -373,43 +371,128 @@ export default function SeminaryAnalyticsDashboard({
   // RENDER TABS
   // ==========================================================================
 
-  const renderDiagnostic = () => (
+  const renderDiagnostic = () => {
+    const disbRatio = latestMonth.totalExpenses / latestMonth.totalIncome;
+    const subDep    = latestMonth.dependencyRatio;
+
+    // Dimension scores (0–100)
+    const liquidityScore     = Math.max(0, Math.min(100, Math.round((latestMonth.totalIncome / latestMonth.totalExpenses) * 50)));
+    const sustainabilityScore = Math.max(0, Math.min(100, Math.round((1 - subDep) * 100)));
+    const personnelPct       = (latestMonth.salaries + latestMonth.benefits + latestMonth.incentives) / latestMonth.totalExpenses;
+    const efficiencyScore    = Math.max(0, Math.min(100, Math.round((1 - personnelPct) * 140)));
+    const last3              = seminaryMockData.slice(-3);
+    const avgNet             = last3.reduce((s, d) => s + d.netSurplus, 0) / 3;
+    const stabilityScore     = Math.max(0, Math.min(100, Math.round(50 + (avgNet / latestMonth.totalIncome) * 50)));
+    const prev               = seminaryMockData[seminaryMockData.length - 4];
+    const growthScore        = Math.max(0, Math.min(100, Math.round(50 + ((latestMonth.totalIncome - prev.totalIncome) / prev.totalIncome) * 100)));
+
+    // Composite health score (weighted)
+    const healthScore = Math.round(
+      liquidityScore * 0.30 +
+      sustainabilityScore * 0.25 +
+      efficiencyScore * 0.20 +
+      stabilityScore * 0.15 +
+      growthScore * 0.10
+    );
+
+    const trendText = healthScore < 33 ? 'Critical' : healthScore < 66 ? 'Needs Attention' : 'Stable';
+    const trendColor = healthScore < 33 ? 'bg-red-50 text-red-700 border-red-100' : healthScore < 66 ? 'bg-amber-50 text-amber-700 border-amber-100' : 'bg-emerald-50 text-emerald-700 border-emerald-100';
+
+    // Worst dimension for the insight
+    const dims = [
+      { name: 'Liquidity', score: liquidityScore },
+      { name: 'Sustainability', score: sustainabilityScore },
+      { name: 'Efficiency', score: efficiencyScore },
+      { name: 'Stability', score: stabilityScore },
+      { name: 'Growth', score: growthScore },
+    ];
+    const worstDim = dims.reduce((a, b) => a.score < b.score ? a : b);
+
+    return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="grid grid-cols-1 gap-6">
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center">
-          <div className="text-center">
-            <Shield className="w-16 h-16 text-gold mx-auto mb-4 opacity-20" />
-            <h3 className="text-2xl font-black text-church-green mb-2">Steward Insight</h3>
-            <p className="text-gray-500 max-w-md mx-auto text-sm leading-relaxed">
-              The seminary currently shows a <span className="font-bold text-emerald-600">net {latestMonth.netSurplus >= 0 ? 'surplus' : 'deficit'} of {formatCurrency(Math.abs(latestMonth.netSurplus))}</span> for this period.
-              Subsidy dependency is at <span className="font-bold text-amber-500">{formatPercent(latestMonth.dependencyRatio)}</span>, which suggests a need for diversified receipt streams.
-            </p>
-            <button
-              onClick={() => setActiveTab(3)}
-              className="mt-6 px-6 py-3 bg-church-green text-white rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-church-green-dark transition-colors flex items-center gap-2 mx-auto"
-            >
-              <Lightbulb className="w-4 h-4" /> View Prescriptive Actions
-            </button>
+
+      {/* ── Financial Health Overview Card ── */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden relative group">
+        <div className="absolute top-0 left-0 w-1.5 h-full bg-[#D4AF37]" />
+        <div className="absolute top-0 right-0 w-64 h-64 bg-[#D4AF37]/5 rounded-full -mr-32 -mt-32 blur-3xl" />
+
+        {/* Header */}
+        <div className="flex justify-between items-start px-8 pt-6 pb-4 relative z-10">
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#D4AF37] text-black flex items-center justify-center shadow-lg shadow-[#D4AF37]/20">
+                <HeartPulse size={20} />
+              </div>
+              <h3 className="text-2xl font-black text-church-green tracking-tight uppercase">Financial Health Overview</h3>
+              <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border shadow-sm ${trendColor}`}>
+                <TrendingUp size={12} />
+                <span>{trendText} Trend</span>
+              </div>
+            </div>
+            <p className="text-sm text-gray-400 font-medium ml-13">Composite analysis of seminary financial health across 5 dimensions</p>
+          </div>
+          <div className="flex flex-col items-end bg-gray-50 px-4 py-2 rounded-2xl border border-gray-100">
+            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Last Updated</span>
+            <span className="text-xs font-black text-church-green">{new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center px-8 pb-8 relative z-10">
+
+          {/* Gauge */}
+          <div className="lg:col-span-5 flex items-center justify-center relative">
+            <div className="absolute inset-0 bg-radial-gradient from-[#D4AF37]/10 to-transparent opacity-50 blur-2xl" />
+            <FinancialHealthGauge
+              score={healthScore}
+              size={220}
+              description={`The seminary is currently in the ${trendText} Zone. Resource allocation is being monitored.`}
+            />
+          </div>
+
+          {/* Dimensions + Insight */}
+          <div className="lg:col-span-7">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-1">
+              <div className="sm:col-span-2 mb-3 flex items-center">
+                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em]">Health Dimensions</h4>
+                <div className="h-px flex-1 bg-gradient-to-r from-gray-100 to-transparent mx-4" />
+              </div>
+              <HealthDimensionBar label="Liquidity"      score={liquidityScore}      weight={30} />
+              <HealthDimensionBar label="Sustainability" score={sustainabilityScore} weight={25} />
+              <HealthDimensionBar label="Efficiency"     score={efficiencyScore}     weight={20} />
+              <HealthDimensionBar label="Stability"      score={stabilityScore}      weight={15} />
+              <div className="sm:col-span-2">
+                <HealthDimensionBar label="Growth" score={growthScore} weight={10} />
+              </div>
+            </div>
+
+            {/* Steward's Insight */}
+            <div className="mt-6 p-4 bg-gradient-to-br from-church-green/5 to-transparent rounded-3xl border border-church-green/10 flex items-start gap-4 relative overflow-hidden group/note">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-church-green/5 rounded-full -mr-12 -mt-12 blur-2xl group-hover/note:bg-church-green/10 transition-colors" />
+              <div className="w-12 h-12 rounded-2xl bg-[#D4AF37] text-black flex items-center justify-center shrink-0 shadow-xl shadow-[#D4AF37]/20">
+                <BrainCircuit size={24} />
+              </div>
+              <div className="relative z-10">
+                <h5 className="text-[10px] font-black text-church-green uppercase tracking-[0.2em] mb-1.5">Steward's Insight</h5>
+                <p className="text-sm text-gray-600 leading-relaxed font-medium">
+                  "The seminary currently shows a{' '}
+                  <span className="font-black text-church-green">
+                    net {latestMonth.netSurplus >= 0 ? 'surplus' : 'deficit'} of {formatCurrency(Math.abs(latestMonth.netSurplus))}
+                  </span>.
+                  The <span className="font-black text-church-green">{worstDim.name}</span> dimension
+                  ({worstDim.score}/100) needs the most attention.
+                  {disbRatio > 1 ? ' Disbursements currently exceed receipts — review expense categories.' : ' Consider diversifying income streams to reduce subsidy dependency.'}
+                  "
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Financial Health Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {[
-          { label: 'Disbursement Ratio', value: formatPercent(latestMonth.totalExpenses / latestMonth.totalIncome), status: latestMonth.totalExpenses / latestMonth.totalIncome > 1 ? 'Critical' : 'Stable', color: latestMonth.totalExpenses / latestMonth.totalIncome > 1 ? 'text-rose-600 bg-rose-50' : 'text-emerald-600 bg-emerald-50' },
-          { label: 'Subsidy Dependency', value: formatPercent(latestMonth.dependencyRatio), status: latestMonth.dependencyRatio > 0.5 ? 'High Risk' : 'Acceptable', color: latestMonth.dependencyRatio > 0.5 ? 'text-amber-600 bg-amber-50' : 'text-emerald-600 bg-emerald-50' },
-          { label: 'Self-Receipts Share', value: formatPercent(latestMonth.fees / latestMonth.totalIncome), status: 'Monitored', color: 'text-blue-600 bg-blue-50' },
-        ].map((item, i) => (
-          <div key={i} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">{item.label}</p>
-            <p className="text-3xl font-black text-church-green mb-3">{item.value}</p>
-            <span className={`text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full ${item.color}`}>{item.status}</span>
-          </div>
-        ))}
-      </div>
     </div>
-  );
+    );
+  };
 
   const renderDescriptive = () => {
     const expenseBreakdown = [
@@ -428,8 +511,170 @@ export default function SeminaryAnalyticsDashboard({
       { name: 'Others Expenses', value: latestMonth.othersExpenses },
     ].filter(e => e.value > 0).sort((a, b) => b.value - a.value);
 
+    // Multi-seminary comparison data (diocese-wide view)
+    const seminaryComparisonData = [
+      { name: "St. Peter's College Seminary", collections: 8200000, disbursements: 6700000 },
+      { name: 'San Pablo Theological Formation Center', collections: 6100000, disbursements: 5200000 },
+    ];
+
+    // Collections breakdown by category monthly
+    const collectionsBreakdownData = seminaryMockData.map(d => ({
+      month: d.month,
+      'Mass Collections': d.massCollections,
+      'Seminary Fees': d.fees,
+      'Donations': d.donations,
+      'Other Sources': d.otherSources,
+      'RCBSP Subsidy': d.subsidyRCBSP,
+    }));
+
+    // Disbursement breakdown monthly (grouped)
+    const disbursementBreakdownData = seminaryMockData.map(d => ({
+      month: d.month,
+      'Personnel': d.salaries + d.benefits + d.incentives,
+      'Operations': d.utilities + d.lpg + d.supplies + d.purchases,
+      'Maintenance': d.repairs + d.construction,
+    }));
+
+    // Decline monitor data per seminary
+    const declineMonitorData = [
+      { name: "St. Peter's College Seminary", vicariate: 'San Pablo', class: 'Class A', w1: 720000, w2: 695000, w3: 668000, w4: 640000, trend: -11 },
+      { name: 'San Pablo Theological Formation Center', vicariate: 'San Pablo', class: 'Class B', w1: 540000, w2: 558000, w3: 574000, w4: 591000, trend: 9 },
+    ];
+
     return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+
+      {/* ── DIOCESE-WIDE ONLY: Collections & Disbursements by Seminary ── */}
+      {isDioceseWide && (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <h3 className="text-3xl font-extrabold text-gray-900 uppercase tracking-tight">
+                COLLECTIONS / RECEIPTS &amp; DISBURSEMENTS BY SEMINARY
+              </h3>
+            </div>
+          </div>
+          <div className="h-[320px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={seminaryComparisonData} margin={{ top: 20, right: 30, left: 40, bottom: 20 }} barCategoryGap="20%">
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
+                <XAxis dataKey="name" tick={{ fill: '#6B7280', fontSize: 11 }} />
+                <YAxis tickFormatter={(v) => `${(v/1000000).toFixed(1)}M`} tick={{ fill: '#9CA3AF', fontSize: 11 }} label={{ value: 'Amount (PHP)', angle: -90, position: 'insideLeft', style: { fill: '#9CA3AF', fontSize: 10, fontWeight: 'bold' }, offset: -20 }} />
+                <Tooltip formatter={(v: number) => formatCurrency(v)} contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }} />
+                <Legend verticalAlign="top" height={36} iconType="circle" />
+                <Bar dataKey="collections" name="collections" fill="#D4AF37" radius={[8, 8, 0, 0]} maxBarSize={50} />
+                <Bar dataKey="disbursements" name="disbursements" fill="#1a472a" radius={[8, 8, 0, 0]} maxBarSize={50} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="flex items-center gap-6 justify-center mt-4">
+            <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#D4AF37]" /><span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Collections</span></div>
+            <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#1a472a]" /><span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Disbursements</span></div>
+          </div>
+          <div className="text-center mt-2 text-[11px] font-bold text-gray-400 uppercase tracking-[0.4em]">Seminary</div>
+        </div>
+      )}
+
+      {/* Collections Breakdown by Category */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <div className="flex items-center justify-between mb-2">
+          <div>
+            <h3 className="text-2xl font-extrabold text-gray-900 uppercase tracking-tight">Collections Breakdown</h3>
+            <p className="text-sm text-gray-400 mt-1">Breakdown of receipts across the seminary.</p>
+          </div>
+        </div>
+        <div className="h-[320px] mt-4">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={collectionsBreakdownData} margin={{ top: 10, right: 20, left: 10, bottom: 5 }} barCategoryGap="20%" barGap={2}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+              <XAxis dataKey="month" tick={{ fill: '#6B7280', fontSize: 10 }} />
+              <YAxis tickFormatter={(v) => `${(v/1000000).toFixed(1)}M`} tick={{ fill: '#6B7280', fontSize: 10 }} label={{ value: 'Amount (Millions)', angle: -90, position: 'insideLeft', style: { fill: '#9CA3AF', fontSize: 9, fontWeight: 'bold' }, offset: -5 }} />
+              <Tooltip formatter={(v: number) => formatCurrency(v)} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }} />
+              <Legend verticalAlign="bottom" height={36} iconType="circle" />
+              <Bar dataKey="Mass Collections" fill="#D4AF37" radius={[4, 4, 0, 0]} maxBarSize={14} />
+              <Bar dataKey="Seminary Fees"   fill="#1a472a" radius={[4, 4, 0, 0]} maxBarSize={14} />
+              <Bar dataKey="Donations"       fill="#10B981" radius={[4, 4, 0, 0]} maxBarSize={14} />
+              <Bar dataKey="RCBSP Subsidy"   fill="#3B82F6" radius={[4, 4, 0, 0]} maxBarSize={14} />
+              <Bar dataKey="Other Sources"   fill="#F59E0B" radius={[4, 4, 0, 0]} maxBarSize={14} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Disbursement Breakdown Monthly */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <div className="mb-2">
+          <h3 className="text-2xl font-extrabold text-gray-900 uppercase tracking-tight">Disbursement Breakdown</h3>
+          <p className="text-sm text-gray-400 mt-1">Breakdown of expenses across the seminary.</p>
+        </div>
+        <div className="h-[320px] mt-4">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={disbursementBreakdownData} margin={{ top: 10, right: 20, left: 10, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+              <XAxis dataKey="month" tick={{ fill: '#6B7280', fontSize: 10 }} />
+              <YAxis tickFormatter={(v) => `${(v/1000000).toFixed(1)}M`} tick={{ fill: '#6B7280', fontSize: 10 }} label={{ value: 'Amount (Millions)', angle: -90, position: 'insideLeft', style: { fill: '#9CA3AF', fontSize: 9, fontWeight: 'bold' }, offset: -5 }} />
+              <Tooltip formatter={(v: number) => formatCurrency(v)} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }} />
+              <Legend verticalAlign="bottom" height={36} iconType="circle" />
+              <Bar dataKey="Personnel" fill="#1a472a" radius={[0,0,0,0]} />
+              <Bar dataKey="Operations" fill="#D4AF37" radius={[0,0,0,0]} />
+              <Bar dataKey="Maintenance" fill="#10B981" radius={[4,4,0,0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* ── DIOCESE-WIDE ONLY: Monthly Collections Decline Monitor ── */}
+      {isDioceseWide && (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <div className="mb-4">
+            <div className="flex items-center gap-2 mb-1">
+              <AlertTriangle className="w-5 h-5 text-amber-500" />
+              <h3 className="text-2xl font-extrabold text-gray-900 uppercase tracking-tight">Monthly Collections Decline Monitor</h3>
+            </div>
+            <p className="text-sm text-gray-400">Flags seminaries with continuously decreasing collections over the past 4 months (sample data).</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="border-b border-gray-100 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                  <th className="py-3 pr-4">Name</th>
+                  <th className="py-3 pr-4">Vicariate</th>
+                  <th className="py-3 pr-4">Class</th>
+                  <th className="py-3 pr-4">Month 1</th>
+                  <th className="py-3 pr-4">Month 2</th>
+                  <th className="py-3 pr-4">Month 3</th>
+                  <th className="py-3 pr-4">Month 4</th>
+                  <th className="py-3 text-right">Trend</th>
+                </tr>
+              </thead>
+              <tbody>
+                {declineMonitorData.map((row, i) => (
+                  <tr key={i} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                    <td className="py-4 pr-4 text-church-green font-medium">{row.name}</td>
+                    <td className="py-4 pr-4 text-church-green/80">{row.vicariate}</td>
+                    <td className="py-4 pr-4 text-church-green/80">{row.class}</td>
+                    <td className="py-4 pr-4 font-medium text-church-green">{formatCurrency(row.w1)}</td>
+                    <td className="py-4 pr-4 font-medium text-church-green">{formatCurrency(row.w2)}</td>
+                    <td className="py-4 pr-4 font-medium text-church-green">{formatCurrency(row.w3)}</td>
+                    <td className="py-4 pr-4 font-medium text-church-green">{formatCurrency(row.w4)}</td>
+                    <td className="py-4 text-right">
+                      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-black ${row.trend < 0 ? 'bg-orange-50 text-orange-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                        <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ backgroundColor: row.trend < 0 ? '#F97316' : '#10B981' }} />
+                        {row.trend > 0 ? '+' : ''}{row.trend}%
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="mt-4 p-4 border border-gray-200 rounded-xl bg-gray-50/50">
+            <p className="text-sm font-bold text-church-black/80">Interpretation:</p>
+            <p className="text-sm text-gray-400 mt-1">Seminaries with sustained receipt decline may require diocesan support, additional fundraising drives, or review of subsidy allocation.</p>
+          </div>
+        </div>
+      )}
+
       {/* Chart 1: Receipts vs Disbursements Monthly - full width */}
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-[460px] flex flex-col">
         <h3 className="text-2xl font-bold text-church-green mb-1 uppercase tracking-wide">Monthly Receipts vs Disbursements</h3>
@@ -455,71 +700,6 @@ export default function SeminaryAnalyticsDashboard({
           <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#D4AF37]" /><span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Disbursements</span></div>
           <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#EF4444]" /><span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Net Surplus/Deficit</span></div>
         </div>
-      </div>
-
-      {/* Chart 2 + 3: Receipts Sources + Disbursement Breakdown side by side */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
-        {/* Receipts Source Composition - stacked bar */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-[500px] flex flex-col">
-          <h3 className="text-2xl font-bold text-church-green mb-1 uppercase tracking-wide">Receipts Source Composition</h3>
-          <p className="text-sm text-gray-400 mb-4">Monthly mix of Receipts from Donations, Seminary Fees, Mass Collections, Other Sources, and Subsidy from RCBSP.</p>
-          <div className="h-[300px] min-h-[300px] flex items-center">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={seminaryMockData} margin={{ top: 5, right: 15, left: 10, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                <XAxis dataKey="month" axisLine={true} tickLine={true} tick={{ fill: '#6B7280', fontSize: 10 }} />
-                <YAxis axisLine={true} tickLine={true} tick={{ fill: '#6B7280', fontSize: 10 }} tickFormatter={(v) => `${v/1000}k`} width={50} />
-                <Tooltip formatter={(val: number) => formatCurrency(val)} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }} />
-                <Bar dataKey="fees" name="Seminary Fees" stackId="a" fill="#1a472a" />
-                <Bar dataKey="subsidyRCBSP" name="RCBSP Subsidy" stackId="a" fill="#D4AF37" />
-                <Bar dataKey="donations" name="Donations" stackId="a" fill="#10B981" />
-                <Bar dataKey="massCollections" name="Mass Collections" stackId="a" fill="#3B82F6" />
-                <Bar dataKey="otherSources" name="Other Sources" stackId="a" fill="#F59E0B" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-2 justify-center border-t border-gray-100 pt-4">
-            {[['#1a472a','Seminary Fees'],['#D4AF37','Subsidy from RCBSP'],['#10B981','Receipts from Donations'],['#3B82F6','Mass Collections'],['#F59E0B','Other Sources']].map(([c,l]) => (
-              <div key={l} className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full" style={{backgroundColor: c as string}} /><span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">{l}</span></div>
-            ))}
-          </div>
-        </div>
-
-        {/* Disbursement Breakdown - horizontal bar, all 13 categories */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-[500px] flex flex-col">
-          <h3 className="text-2xl font-bold text-church-green mb-1 uppercase tracking-wide">Disbursement Breakdown</h3>
-          <p className="text-sm text-gray-400 mb-4">Latest-month ranking using the existing seminary disbursement columns with their spreadsheet-style labels.</p>
-          <div className="h-[340px] min-h-[340px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={expenseBreakdown} layout="vertical" margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} vertical={true} stroke="#E5E7EB" />
-                <XAxis type="number" axisLine={true} tickLine={true} tick={{ fill: '#6B7280', fontSize: 9 }} tickFormatter={(v) => `${v/1000}k`} />
-                <YAxis dataKey="name" type="category" axisLine={true} tickLine={true} tick={{ fill: '#6B7280', fontSize: 9, fontWeight: 'bold' }} width={130} />
-                <Tooltip formatter={(val: number) => formatCurrency(val)} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }} />
-                <Bar dataKey="value" name="Amount" fill="#1a472a" radius={[0, 6, 6, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-[360px] flex flex-col">
-        <h3 className="text-sm font-black text-church-green mb-6 uppercase tracking-wider">Receipts Diversification Gap</h3>
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={[
-            { name: 'Donations', current: 15, target: 30 },
-            { name: 'Self-Receipts', current: 40, target: 50 },
-            { name: 'Subsidy', current: 45, target: 20 },
-          ]} layout="vertical">
-            <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f0f0f0" />
-            <XAxis type="number" hide />
-            <YAxis dataKey="name" type="category" tick={{ fontSize: 10, fontWeight: 'bold' }} width={80} />
-            <Tooltip />
-            <Legend />
-            <Bar dataKey="current" name="Current %" fill={CHART_COLORS[0]} />
-            <Bar dataKey="target" name="Target %" fill={CHART_COLORS[1]} />
-          </BarChart>
-        </ResponsiveContainer>
       </div>
 
     </div>
@@ -580,188 +760,192 @@ export default function SeminaryAnalyticsDashboard({
           )}
         </div>
 
-        {/* Inflation Impact & Expense Spikes */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Disbursement Forecast + Expense Spikes */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-            <p className="text-[10px] font-bold tracking-widest uppercase text-church-green mb-1">SIMULATIONS</p>
-            <h3 className="text-xl font-bold text-amber-600 mb-4">Inflation Impact</h3>
-            <div className="grid grid-cols-2 gap-4 overflow-y-auto max-h-[180px] [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none' }}>
+            <p className="text-[10px] font-bold tracking-widest uppercase text-church-green mb-1">EXPENSE PROJECTIONS</p>
+            <h3 className="text-2xl font-bold text-amber-600">Disbursement Forecast</h3>
+            <p className="text-xs text-gray-400 mt-1 mb-4">Based on historical year-over-year trend (+9%)</p>
+            <div className="grid grid-cols-2 gap-4">
               {[
-                { label: 'UTILITIES', current: 130000, projected: 160000 },
-                { label: 'SALARIES', current: 450000, projected: 480000 },
-                { label: 'SUPPLIES', current: 50000, projected: 65000 },
-                { label: 'REPAIRS', current: 45000, projected: 58000 },
-              ].map((item, i) => (
-                <div key={i} className="border border-gray-200 rounded-xl p-4 flex flex-col gap-2">
-                  <p className="text-[10px] font-bold text-gray-400 tracking-wider">{item.label}</p>
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-church-black">{formatCurrency(item.current)}</span>
-                    <ArrowUpRight className="w-4 h-4 text-amber-500" />
-                    <span className="font-bold text-amber-500">{formatCurrency(item.projected)}</span>
+                { label: 'UTILITIES', current: latestMonth.utilities },
+                { label: 'WAGES', current: latestMonth.salaries },
+                { label: 'SUPPLIES', current: latestMonth.supplies },
+                { label: 'MAINTENANCE', current: latestMonth.repairs },
+              ].map((item, i) => {
+                const projected = Math.round(item.current * 1.09);
+                return (
+                  <div key={i} className="border border-gray-200 rounded-xl p-4 flex flex-col gap-2">
+                    <p className="text-[10px] font-bold text-gray-400 tracking-wider">{item.label}</p>
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="font-bold text-church-black text-sm">{formatCurrency(item.current)}</span>
+                      <ArrowUpRight className="w-4 h-4 text-amber-500 shrink-0" />
+                      <span className="font-bold text-amber-500 text-sm">{formatCurrency(projected)}</span>
+                    </div>
+                    <p className="text-[9px] text-amber-600 font-bold">+{formatCurrency(projected - item.current)} projected increase</p>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
+
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-            <p className="text-[10px] font-bold tracking-widest uppercase text-church-green mb-1">SEASONALITY</p>
-            <h3 className="text-xl font-bold text-amber-600 mb-4">Expense Spikes</h3>
-            <div className="grid grid-cols-2 gap-4 overflow-y-auto max-h-[180px] [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none' }}>
+            <p className="text-[10px] font-bold tracking-widest uppercase text-church-green mb-1">EVENTS</p>
+            <h3 className="text-2xl font-bold text-amber-600">Expense Spikes</h3>
+            <div className="grid grid-cols-2 gap-4 mt-4">
               {[
-                { event: 'Start of Sem (Jun)', expectedSpike: '+38%', primaryDrivers: 'Tuition, board fees, enrollment supplies' },
-                { event: '2nd Sem (Nov)', expectedSpike: '+35%', primaryDrivers: 'Second semester fee collection' },
-                { event: 'December', expectedSpike: '+42%', primaryDrivers: '13th month pay, Christmas programs' },
-                { event: 'Summer (Apr–May)', expectedSpike: '+28%', primaryDrivers: 'Construction, repair projects' },
+                { event: 'Start of Sem (Jun)', spike: '+38%', drivers: 'Tuition, board fees, enrollment supplies' },
+                { event: '2nd Semester (Nov)', spike: '+35%', drivers: 'Second semester fee collection' },
+                { event: 'December', spike: '+42%', drivers: '13th month pay, Christmas programs' },
+                { event: 'Summer (Apr–May)', spike: '+28%', drivers: 'Construction, repair projects' },
               ].map((item, i) => (
                 <div key={i} className="border border-gray-200 rounded-xl p-4 flex flex-col gap-2">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-bold text-church-black">{item.event}</p>
-                    <span className="font-bold text-red-500 bg-red-50 px-2 py-1 rounded text-xs">{item.expectedSpike}</span>
+                    <span className="font-bold text-red-500 bg-red-50 px-2 py-1 rounded text-xs">{item.spike}</span>
                   </div>
-                  <p className="text-xs text-gray-500">{item.primaryDrivers}</p>
+                  <p className="text-xs text-gray-500">{item.drivers}</p>
                 </div>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Original predictive charts below */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
-        {/* 1. Receipts Forecast */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-[400px] lg:col-span-2 flex flex-col">
-          <h3 className="text-sm font-black text-church-green mb-4 uppercase tracking-wider">Receipts Forecast (Linear Regression)</h3>
-          <div className="h-[300px] min-h-[300px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={forecastData}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-              <XAxis dataKey="month" tick={{ fontSize: 10, fontWeight: 'bold' }} />
-              <YAxis tickFormatter={(val) => `${val/1000}k`} tick={{ fontSize: 10, fontWeight: 'bold' }} />
-              <Tooltip formatter={(val: number) => formatCurrency(val)} />
-              <Legend verticalAlign="bottom" height={36} wrapperStyle={{ paddingTop: 12 }} />
-              <Line type="monotone" dataKey="totalIncome" name="Actual Receipts" stroke={CHART_COLORS[0]} strokeWidth={3} />
-              <Line type="monotone" dataKey="totalIncomeForecast" name="Forecasted Receipts" stroke={CHART_COLORS[1]} strokeWidth={2} strokeDasharray="5 5" dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* 2. Disbursement Escalation */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-[400px] flex flex-col">
-          <h3 className="text-sm font-black text-church-green mb-4 uppercase tracking-wider">Disbursement Escalation Warning</h3>
-          <div className="h-[280px] min-h-[280px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={expenseData}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-              <XAxis dataKey="month" tick={{ fontSize: 10, fontWeight: 'bold' }} />
-              <YAxis tickFormatter={(val) => `${val/1000}k`} tick={{ fontSize: 10, fontWeight: 'bold' }} />
-              <Tooltip formatter={(val: number) => formatCurrency(val)} />
-              <Line type="monotone" dataKey="isNormal" stroke={CHART_COLORS[0]} strokeWidth={3} />
-              <Line type="monotone" dataKey="isHigh" stroke={COLORS.error} strokeWidth={4} />
-            </LineChart>
-          </ResponsiveContainer>
-          </div>
-          <div className="mt-auto flex items-center gap-2 border-t border-gray-100 pt-4 text-rose-600 font-bold text-[10px] uppercase">
-            <AlertTriangle className="w-4 h-4" /> Threshold Exceeded in Dec, Apr, May
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-[430px] lg:col-span-3 flex flex-col">
-          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between mb-5">
-            <div className="max-w-3xl">
-              <h3 className="text-sm font-black text-church-green uppercase tracking-wider">Seminary Self-Sufficiency Roadmap (3yr)</h3>
-              <p className="mt-2 text-sm text-gray-500 leading-relaxed">
-                Planning target for the diocese&apos;s two existing seminaries. This shows the desired shift from subsidy dependence
-                toward stronger own-source receipts over the next three years.
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-3 min-w-[250px]">
-              <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700">2028 Own-Source</p>
-                <p className="mt-2 text-2xl font-black text-church-green">85%</p>
+        {/* Collections Rise & Fall + Disbursement Rise & Fall + Alerts */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="bg-[#1a472a] rounded-2xl shadow-sm p-6">
+            <p className="text-[10px] font-bold tracking-widest uppercase text-[#D4AF37] mb-1">PREDICTIONS</p>
+            <h3 className="text-2xl font-bold text-white mb-4">Collections Rise & Fall</h3>
+            <div className="space-y-4">
+              <div className="bg-[#0f2d1a] rounded-xl p-6 flex flex-col items-center justify-center text-center">
+                <div className="flex items-center gap-2 text-[#D4AF37] text-4xl font-bold">
+                  <ArrowUpRight className="w-8 h-8" /> +14.2%
+                </div>
+                <p className="text-[10px] font-bold tracking-widest text-gray-400 mt-3 uppercase">PROJECTED RISE (Q1)</p>
               </div>
-              <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-700">2028 Subsidy</p>
-                <p className="mt-2 text-2xl font-black text-gold">15%</p>
+              <div className="bg-[#222222] rounded-xl p-6 flex flex-col items-center justify-center text-center">
+                <div className="flex items-center gap-2 text-red-400 text-4xl font-bold">
+                  <ArrowDownRight className="w-8 h-8" /> -3.8%
+                </div>
+                <p className="text-[10px] font-bold tracking-widest text-gray-400 mt-3 uppercase">PROJECTED DIP (Q2)</p>
               </div>
             </div>
           </div>
 
-          <div className="h-[250px] min-h-[250px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart
-                data={[
-                  { year: '2026', subsidy: 45, own: 55 },
-                  { year: '2027', subsidy: 30, own: 70 },
-                  { year: '2028', subsidy: 15, own: 85 },
-                ]}
-                margin={{ top: 10, right: 20, left: 0, bottom: 10 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                <XAxis dataKey="year" tick={{ fontSize: 10, fontWeight: 'bold', fill: '#6B7280' }} />
-                <YAxis
-                  domain={[0, 100]}
-                  tickFormatter={(val) => `${val}%`}
-                  tick={{ fontSize: 10, fontWeight: 'bold', fill: '#6B7280' }}
-                />
-                <Tooltip
-                  formatter={(value: number) => `${value}%`}
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
-                />
-                <Area type="monotone" dataKey="subsidy" name="RCBSP Subsidy Share" stackId="1" stroke="#1A472A" fill="#1A472A" fillOpacity={0.72} />
-                <Area type="monotone" dataKey="own" name="Own-Source Receipts Share" stackId="1" stroke="#D4AF37" fill="#D4AF37" fillOpacity={0.82} />
-              </AreaChart>
-            </ResponsiveContainer>
+          <div className="bg-[#111111] rounded-2xl shadow-sm p-6">
+            <p className="text-[10px] font-bold tracking-widest uppercase text-[#D4AF37] mb-1">PREDICTIONS</p>
+            <h3 className="text-2xl font-bold text-white mb-4">Disbursement Rise & Fall</h3>
+            <div className="space-y-4">
+              <div className="bg-white/5 rounded-xl p-6 flex flex-col items-center justify-center text-center border border-white/5">
+                <div className="flex items-center gap-2 text-[#D4AF37] text-4xl font-bold">
+                  <ArrowUpRight className="w-8 h-8" /> +5.8%
+                </div>
+                <p className="text-[10px] font-bold tracking-widest text-gray-400 mt-3 uppercase">PROJECTED RISE (Q1)</p>
+              </div>
+              <div className="bg-white/5 rounded-xl p-6 flex flex-col items-center justify-center text-center border border-white/5">
+                <div className="flex items-center gap-2 text-red-400 text-4xl font-bold">
+                  <ArrowDownRight className="w-8 h-8" /> -2.1%
+                </div>
+                <p className="text-[10px] font-bold tracking-widest text-gray-400 mt-3 uppercase">PROJECTED DIP (Q2)</p>
+              </div>
+            </div>
           </div>
 
-          <div className="mt-auto flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-gray-100 pt-4">
-            <div className="flex items-center gap-2">
-              <div className="h-3 w-3 rounded-full bg-church-green" />
-              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">RCBSP Subsidy Share</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="h-3 w-3 rounded-full bg-gold" />
-              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Own-Source Receipts Share</span>
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <h3 className="text-2xl font-bold text-church-black mb-4">Alerts</h3>
+            <div className="space-y-4">
+              <div className="bg-[#FFF8E7] border border-[#E6C27A]/50 rounded-xl p-4 flex gap-3">
+                <AlertTriangle className="w-5 h-5 text-[#B5952F] flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold text-church-black text-sm">Projected Deficit Months</p>
+                  <p className="text-xs font-medium text-white mt-2 bg-[#B5952F] px-2 py-1 rounded inline-block">Watch: June</p>
+                </div>
+              </div>
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Subsidy Dependency</p>
+                <p className="text-sm text-church-black mt-1">High subsidy reliance — diversify income streams before next academic year.</p>
+              </div>
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Event Spikes</p>
+                <p className="text-sm text-church-black mt-1">Expected cost uplift at semester openings and December.</p>
+              </div>
             </div>
           </div>
         </div>
 
-        </div>
       </div>
     );
   };
 
   const renderPrescriptive = () => (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="grid grid-cols-1 gap-6 items-stretch">
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <h3 className="text-sm font-black text-church-green mb-6 uppercase tracking-wider">Disbursement Optimization Roadmap</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left">
-              <thead>
-                <tr className="border-b border-gray-100 text-[10px] font-black uppercase text-gray-400">
-                  <th className="py-3 px-2">Disbursement Category</th>
-                  <th className="py-3 px-2">Recommended Cut</th>
-                  <th className="py-3 px-2">Projected Savings</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[
-                  { cat: 'Utilities Expense', cut: '15%', savings: latestMonth.utilities * 0.15 },
-                  { cat: 'Others Supplies Expense', cut: '20%', savings: latestMonth.supplies * 0.20 },
-                  { cat: 'Repairs and Maintainance', cut: '10%', savings: latestMonth.repairs * 0.10 },
-                  { cat: 'Others Expenses', cut: '25%', savings: latestMonth.othersExpenses * 0.25 },
-                ].map((row, i) => (
-                  <tr key={i} className={`${i % 2 === 0 ? 'bg-gray-50/50' : 'bg-white'} border-b border-gray-50`}>
-                    <td className="py-3 px-2 font-bold text-church-green">{row.cat}</td>
-                    <td className="py-3 px-2 text-rose-600 font-bold">{row.cut}</td>
-                    <td className="py-3 px-2 font-black text-emerald-600">{formatCurrency(row.savings)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+
+      {/* Utility Cost Reduction + Ranking Upgrades */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-[#1A1A1A] rounded-2xl p-6">
+          <p className="text-[10px] font-bold tracking-widest uppercase text-[#D4AF37] mb-1">EFFICIENCY</p>
+          <h3 className="text-2xl font-bold text-white mb-4">Utility Cost Reduction</h3>
+          <div className="space-y-4">
+            {[
+              { name: "St. Peter's College Seminary", desc: 'Shift to LED fixtures + scheduled AC maintenance, review peak-hour usage.', ratio: '25% Ratio' },
+              { name: 'San Pablo Theological Formation Center', desc: 'Shift to LED fixtures + scheduled AC maintenance, review peak-hour usage.', ratio: '28% Ratio' },
+            ].map((item, i) => (
+              <div key={i} className="bg-[#222222] border border-gray-800 rounded-xl p-5 flex justify-between items-center gap-4">
+                <div>
+                  <h4 className="font-bold text-white text-sm">{item.name}</h4>
+                  <p className="text-xs text-gray-400 mt-1">{item.desc}</p>
+                </div>
+                <span className="bg-emerald-500/10 text-emerald-600 px-3 py-1 rounded-md text-xs font-bold whitespace-nowrap">{item.ratio}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-gray-100 p-6">
+          <p className="text-[10px] font-bold tracking-widest uppercase text-[#D4AF37] mb-1">ACTION PLAN</p>
+          <h3 className="text-2xl font-bold text-church-black mb-4">Ranking Upgrades</h3>
+          <div className="space-y-4">
+            {[
+              { name: "St. Peter's College Seminary", desc: 'Increase fee collection efficiency + align disbursements to baseline utilities and wages.', from: 'B', to: 'A' },
+              { name: 'San Pablo Theological Formation Center', desc: 'Reduce subsidy dependency + diversify income through fundraising programs.', from: 'C', to: 'B' },
+            ].map((item, i) => (
+              <div key={i} className="bg-gray-50 border border-gray-100 rounded-xl p-5 flex justify-between items-center gap-4">
+                <div>
+                  <h4 className="font-bold text-church-black text-sm">{item.name}</h4>
+                  <p className="text-xs text-gray-500 mt-1">{item.desc}</p>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="w-6 h-6 rounded-full bg-church-black text-white flex items-center justify-center text-xs font-bold">{item.from}</div>
+                  <ArrowUpRight className="w-4 h-4 text-[#D4AF37]" />
+                  <div className="w-6 h-6 rounded-full bg-[#D4AF37] text-church-black flex items-center justify-center text-xs font-bold">{item.to}</div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
+
+      {/* Diocese-Wide Expense Optimization */}
+      <div className="bg-[#1A1A1A] rounded-2xl p-6">
+        <p className="text-[10px] font-bold tracking-widest uppercase text-[#D4AF37] mb-1">DISBURSEMENTS</p>
+        <h3 className="text-2xl font-bold text-white mb-4">Diocese-Wide Expense Optimization</h3>
+        <div className="space-y-4">
+          {[
+            { name: 'Centralized Purchasing', desc: 'Implement a diocesan-wide procurement system for common supplies (candles, hosts, office materials) to leverage bulk pricing.', impact: '10-15% Savings' },
+            { name: 'Pastoral Program Synergy', desc: 'Encourage neighboring parishes within vicariates to co-host large pastoral events and training seminars to share costs.', impact: '20% Cost Reduction per Event' },
+            { name: 'Preventative Maintenance', desc: 'Establish a mandatory quarterly maintenance schedule for all parish facilities to reduce emergency repair disbursements.', impact: 'Long-term Stability' },
+          ].map((item, i) => (
+            <div key={i} className="bg-[#222222] border border-gray-800 rounded-xl p-5 flex justify-between items-center gap-4">
+              <div>
+                <h4 className="font-bold text-white text-sm">{item.name}</h4>
+                <p className="text-xs text-gray-400 mt-1">{item.desc}</p>
+              </div>
+              <span className="bg-emerald-500/10 text-emerald-600 px-3 py-1 rounded-md text-xs font-bold whitespace-nowrap">{item.impact}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
     </div>
   );
 

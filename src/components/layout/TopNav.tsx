@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import React, { useState } from 'react';
-import { Calendar, ChevronDown, Check, User } from 'lucide-react';
+import { Calendar, ChevronDown, Check, User, LogOut } from 'lucide-react';
 
 import { Role, Timeframe } from '../../App';
 
@@ -13,6 +13,7 @@ interface TopNavProps {
   onTimeframeChange?: (timeframe: Timeframe) => void;
   year?: number;
   onYearChange?: (year: number) => void;
+  onLogout?: () => void;
 }
 
 export function TopNav({ 
@@ -22,10 +23,12 @@ export function TopNav({
   timeframe = '6m', 
   onTimeframeChange,
   year = 2026,
-  onYearChange
+  onYearChange,
+  onLogout
 }: TopNavProps) {
   const [showTimeframeDropdown, setShowTimeframeDropdown] = useState(false);
   const [isYearOpen, setIsYearOpen] = useState(false);
+  const [isAccountOpen, setIsAccountOpen] = useState(false);
 
   const timeframeLabels: Record<Timeframe, string> = {
     '6m': 'Past 6 Months',
@@ -128,12 +131,39 @@ export function TopNav({
               )}
             </div>
             
-            <button 
-              onClick={() => onNavigate?.('settings')}
-              className="flex h-11 w-11 lg:h-12 lg:w-12 items-center justify-center rounded-full border border-gold-200 bg-gold-500 text-black shadow-[0_0_24px_rgba(212,175,55,0.3)] hover:bg-gold-400 transition-colors cursor-pointer shrink-0"
-            >
-              <span className="text-lg font-black">{userInitial}</span>
-            </button>
+            <div className="relative">
+              <button 
+                onClick={() => setIsAccountOpen(!isAccountOpen)}
+                className="flex h-11 w-11 lg:h-12 lg:w-12 items-center justify-center rounded-full border border-gold-200 bg-gold-500 text-black shadow-[0_0_24px_rgba(212,175,55,0.3)] hover:bg-gold-400 transition-colors cursor-pointer shrink-0"
+              >
+                <span className="text-lg font-black">{userInitial}</span>
+              </button>
+
+              {isAccountOpen && (
+                <div className="absolute right-0 mt-2 w-44 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-[60] animate-in fade-in zoom-in duration-200">
+                  <button
+                    onClick={() => {
+                      setIsAccountOpen(false);
+                      onNavigate?.('profile');
+                    }}
+                    className="w-full px-4 py-2.5 text-left text-sm font-bold text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors"
+                  >
+                    <User className="w-4 h-4 text-gold-600" />
+                    Profile
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsAccountOpen(false);
+                      onLogout?.();
+                    }}
+                    className="w-full px-4 py-2.5 text-left text-sm font-bold text-rose-600 hover:bg-rose-50 flex items-center gap-3 transition-colors"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Sign out
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -208,12 +238,39 @@ export function TopNav({
               )}
             </div>
 
-            <button 
-              onClick={() => onNavigate?.('settings')}
-              className="w-10 h-10 bg-gold-500 text-black rounded-full flex items-center justify-center hover:bg-gold-600 transition-colors cursor-pointer shadow-lg shadow-gold-500/20 border border-gold-600 shrink-0"
-            >
-              <User className="w-5 h-5" />
-            </button>
+            <div className="relative">
+              <button 
+                onClick={() => setIsAccountOpen(!isAccountOpen)}
+                className="w-10 h-10 bg-gold-500 text-black rounded-full flex items-center justify-center hover:bg-gold-600 transition-colors cursor-pointer shadow-lg shadow-gold-500/20 border border-gold-600 shrink-0"
+              >
+                <User className="w-5 h-5" />
+              </button>
+
+              {isAccountOpen && (
+                <div className="absolute right-0 mt-2 w-44 bg-black/95 rounded-2xl shadow-xl border border-gold-500/30 py-2 z-[60] animate-in fade-in zoom-in duration-200">
+                  <button
+                    onClick={() => {
+                      setIsAccountOpen(false);
+                      onNavigate?.('profile');
+                    }}
+                    className="w-full px-4 py-2.5 text-left text-xs font-bold text-white hover:bg-white/5 flex items-center gap-3 transition-colors"
+                  >
+                    <User className="w-4 h-4 text-gold-500" />
+                    Profile
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsAccountOpen(false);
+                      onLogout?.();
+                    }}
+                    className="w-full px-4 py-2.5 text-left text-xs font-bold text-rose-300 hover:bg-rose-500/10 flex items-center gap-3 transition-colors"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Sign out
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>

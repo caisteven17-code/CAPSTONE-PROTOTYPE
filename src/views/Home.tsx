@@ -100,27 +100,21 @@ const mockAnnouncements = [
 ];
 
 const institutionStats = [
-  { 
-    title: 'Parishes', 
-    value: '86', 
+  {
+    title: 'Parishes',
+    value: '86',
     icon: Church,
     color: 'gold'
   },
-  { 
-    title: 'Vicariates', 
-    value: '13', 
-    icon: MapIcon,
-    color: 'amber'
-  },
-  { 
-    title: 'Seminaries', 
-    value: '5', 
+  {
+    title: 'Seminaries',
+    value: '5',
     icon: BookOpen,
     color: 'emerald'
   },
-  { 
-    title: 'Diocesan Schools', 
-    value: '7', 
+  {
+    title: 'Diocesan Schools',
+    value: '7',
     icon: GraduationCap,
     color: 'purple'
   }
@@ -226,15 +220,94 @@ export function Home({ onNavigate }: HomeProps) {
       {/* Main Content Section */}
       <div id="dashboard-section" className="w-full bg-white py-16 border-b border-gray-100 relative z-40">
         <div className="max-w-[1600px] mx-auto px-4 md:px-8">
-          {/* Diocesan Institutions Section */}
+
+          {/* Recent Announcements — shown first */}
           <div className="mb-0">
+            <div className="space-y-8">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="inline-flex items-center gap-3 px-6 py-2.5 bg-gray-900 text-white rounded-full text-[10px] font-black uppercase tracking-[0.3em] shadow-xl">
+                    <Bell className="w-4 h-4 text-[#d4af37]" />
+                    Announcements
+                  </div>
+                  <div className="mt-6 space-y-2">
+                    <h2 className="text-4xl md:text-5xl font-serif font-bold text-gray-900 leading-[1.1]">
+                      Latest <span className="text-[#d4af37] italic">Updates</span>
+                    </h2>
+                    <p className="text-lg text-gray-500 leading-relaxed font-light max-w-2xl">
+                      Stay informed with the latest announcements from the diocese.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => onNavigate('announcements')}
+                  className="hidden md:flex items-center gap-2 px-6 py-3 bg-[#d4af37] text-gray-900 font-bold rounded-xl hover:bg-[#c49d1f] transition-colors"
+                >
+                  View All
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {mockAnnouncements.map((announcement, index) => (
+                  <motion.div
+                    key={announcement.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: index * 0.1 }}
+                    className={`p-6 rounded-2xl border transition-all duration-500 ${
+                      announcement.priority === 'high'
+                        ? 'bg-red-50 border-red-100 hover:shadow-lg'
+                        : 'bg-white border-gray-50 hover:shadow-lg hover:border-[#d4af37]/20'
+                    }`}
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className={`p-2 rounded-lg ${
+                        announcement.priority === 'high'
+                          ? 'bg-red-100 text-red-600'
+                          : 'bg-blue-100 text-blue-600'
+                      }`}>
+                        {announcement.priority === 'high' ? (
+                          <AlertCircle className="w-5 h-5" />
+                        ) : (
+                          <CheckCircle className="w-5 h-5" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-bold text-gray-900 mb-2 line-clamp-2">{announcement.title}</h3>
+                        <p className="text-sm text-gray-600 mb-3 line-clamp-3">{announcement.description}</p>
+                        <p className="text-xs text-gray-400 font-medium">
+                          {new Date(announcement.date).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+
+              <button
+                onClick={() => onNavigate('announcements')}
+                className="md:hidden w-full py-3 px-6 bg-[#d4af37] text-gray-900 font-bold rounded-xl hover:bg-[#c49d1f] transition-colors"
+              >
+                View All Announcements
+              </button>
+            </div>
+          </div>
+
+          {/* Diocesan Institutions Section */}
+          <div className="mt-24 pt-20 border-t border-gray-100">
             <div className="flex items-center justify-between mb-10">
               <h3 className="text-2xl font-serif font-bold text-gray-900">Diocesan Institutions</h3>
               <div className="h-px flex-1 bg-gray-100 mx-8" />
               <div className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em]">Institutional Snapshot</div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {institutionStats.map((card, index) => (
                 <motion.div
                   key={index}
@@ -406,84 +479,6 @@ export function Home({ onNavigate }: HomeProps) {
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* Recent Announcements Section */}
-          <div className="mt-24 pt-20 border-t border-gray-100">
-            <div className="space-y-8">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="inline-flex items-center gap-3 px-6 py-2.5 bg-gray-900 text-white rounded-full text-[10px] font-black uppercase tracking-[0.3em] shadow-xl">
-                    <Bell className="w-4 h-4 text-[#d4af37]" />
-                    Announcements
-                  </div>
-                  <div className="mt-6 space-y-2">
-                    <h2 className="text-4xl md:text-5xl font-serif font-bold text-gray-900 leading-[1.1]">
-                      Latest <span className="text-[#d4af37] italic">Updates</span>
-                    </h2>
-                    <p className="text-lg text-gray-500 leading-relaxed font-light max-w-2xl">
-                      Stay informed with the latest announcements from the diocese.
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => onNavigate('announcements')}
-                  className="hidden md:flex items-center gap-2 px-6 py-3 bg-[#d4af37] text-gray-900 font-bold rounded-xl hover:bg-[#c49d1f] transition-colors"
-                >
-                  View All
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {mockAnnouncements.map((announcement, index) => (
-                  <motion.div
-                    key={announcement.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: index * 0.1 }}
-                    className={`p-6 rounded-2xl border transition-all duration-500 ${
-                      announcement.priority === 'high'
-                        ? 'bg-red-50 border-red-100 hover:shadow-lg'
-                        : 'bg-white border-gray-50 hover:shadow-lg hover:border-[#d4af37]/20'
-                    }`}
-                  >
-                    <div className="flex items-start gap-4">
-                      <div className={`p-2 rounded-lg ${
-                        announcement.priority === 'high'
-                          ? 'bg-red-100 text-red-600'
-                          : 'bg-blue-100 text-blue-600'
-                      }`}>
-                        {announcement.priority === 'high' ? (
-                          <AlertCircle className="w-5 h-5" />
-                        ) : (
-                          <CheckCircle className="w-5 h-5" />
-                        )}
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-bold text-gray-900 mb-2 line-clamp-2">{announcement.title}</h3>
-                        <p className="text-sm text-gray-600 mb-3 line-clamp-3">{announcement.description}</p>
-                        <p className="text-xs text-gray-400 font-medium">
-                          {new Date(announcement.date).toLocaleDateString('en-US', { 
-                            month: 'short', 
-                            day: 'numeric',
-                            year: 'numeric'
-                          })}
-                        </p>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-
-              <button
-                onClick={() => onNavigate('announcements')}
-                className="md:hidden w-full py-3 px-6 bg-[#d4af37] text-gray-900 font-bold rounded-xl hover:bg-[#c49d1f] transition-colors"
-              >
-                View All Announcements
-              </button>
             </div>
           </div>
 
