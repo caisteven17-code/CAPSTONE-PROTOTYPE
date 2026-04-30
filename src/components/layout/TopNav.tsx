@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import React, { useState } from 'react';
-import { Calendar, ChevronDown, Check, User, LogOut } from 'lucide-react';
+import { Calendar, ChevronDown, Check, User, Database } from 'lucide-react';
 
 import { Role, Timeframe } from '../../App';
 
@@ -140,7 +140,7 @@ export function TopNav({
               </button>
 
               {isAccountOpen && (
-                <div className="absolute right-0 mt-2 w-44 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-[60] animate-in fade-in zoom-in duration-200">
+                <div className="absolute right-0 mt-2 w-52 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-[60] animate-in fade-in zoom-in duration-200">
                   <button
                     onClick={() => {
                       setIsAccountOpen(false);
@@ -151,16 +151,23 @@ export function TopNav({
                     <User className="w-4 h-4 text-gold-600" />
                     Profile
                   </button>
-                  <button
-                    onClick={() => {
-                      setIsAccountOpen(false);
-                      onLogout?.();
-                    }}
-                    className="w-full px-4 py-2.5 text-left text-sm font-bold text-rose-600 hover:bg-rose-50 flex items-center gap-3 transition-colors"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    Sign out
-                  </button>
+                  {(role === 'priest' || role === 'school' || role === 'seminary') && (
+                    <button
+                      onClick={() => {
+                        setIsAccountOpen(false);
+                        const route = role === 'school'
+                          ? 'school-data-submission'
+                          : role === 'seminary'
+                          ? 'seminary-data-submission'
+                          : 'parish-data-submission';
+                        onNavigate?.(route);
+                      }}
+                      className="w-full px-4 py-2.5 text-left text-sm font-bold text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors"
+                    >
+                      <Database className="w-4 h-4 text-church-green" />
+                      Data Management
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -257,16 +264,6 @@ export function TopNav({
                   >
                     <User className="w-4 h-4 text-gold-500" />
                     Profile
-                  </button>
-                  <button
-                    onClick={() => {
-                      setIsAccountOpen(false);
-                      onLogout?.();
-                    }}
-                    className="w-full px-4 py-2.5 text-left text-xs font-bold text-rose-300 hover:bg-rose-500/10 flex items-center gap-3 transition-colors"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    Sign out
                   </button>
                 </div>
               )}

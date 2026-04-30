@@ -16,6 +16,7 @@ import { Announcements } from './views/Announcements';
 import { HealthTracker } from './views/HealthTracker';
 import { ConsolidatedFinancial } from './views/ConsolidatedFinancial';
 import { AuditLog } from './views/AuditLog';
+import { ParishDataSubmission } from './views/ParishDataSubmission';
 import { BottomNav } from './components/ui/BottomNav';
 import { StewardChatbot } from './components/ui/StewardChatbot';
 import { auth, AuthUser } from './firebase';
@@ -198,12 +199,14 @@ export default function App() {
         case 'dashboard':
         case 'parish-dashboard':
           if (role === 'priest') {
-            return <BishopDashboard initialEntityType="Parishes" initialEntityFilter="San Isidro Labrador Parish" lockEntityFilter timeframe={timeframe} year={year} onYearChange={setYear} />;
+            return <BishopDashboard initialEntityType="Parishes" initialEntityFilter="San Isidro Labrador Parish" lockEntityFilter timeframe={timeframe} year={year} onYearChange={setYear} onNavigate={setActiveTab} />;
           }
           return <PriestDashboard role={role} timeframe={toPriestTimeframe(timeframe)} year={year} onYearChange={setYear} onNavigate={setActiveTab} onLogout={handleLogout} />;
+        case 'parish-data-submission':
+          return <ParishDataSubmission parishName="San Isidro Labrador Parish" vicariate="Holy Family Vicariate" parishClass="Class B" year={year} onBack={() => setActiveTab('parish-dashboard')} />;
         case 'parish-health':
           if (role === 'priest') {
-            return <BishopDashboard initialEntityType="Parishes" initialEntityFilter="San Isidro Labrador Parish" lockEntityFilter timeframe={timeframe} year={year} onYearChange={setYear} />;
+            return <BishopDashboard initialEntityType="Parishes" initialEntityFilter="San Isidro Labrador Parish" lockEntityFilter timeframe={timeframe} year={year} onYearChange={setYear} onNavigate={setActiveTab} />;
           }
           return <PriestDashboard role={role} timeframe={toPriestTimeframe(timeframe)} year={year} onYearChange={setYear} onNavigate={setActiveTab} onLogout={handleLogout} />;
         case 'parish-aitwin':
@@ -216,10 +219,14 @@ export default function App() {
           return <AITwin mode="priest" />;
         case 'seminaries':
           return <PriestDashboard role="seminary" timeframe={toPriestTimeframe(timeframe)} year={year} onYearChange={setYear} onNavigate={setActiveTab} onLogout={handleLogout} />;
+        case 'seminary-data-submission':
+          return <ParishDataSubmission parishName="St. Peter's College Seminary" vicariate="St. John the Baptist Vicariate" parishClass="Seminary" year={year} onBack={() => setActiveTab('seminaries')} />;
         case 'seminary-aitwin':
           return <AITwin mode="seminary" />;
         case 'school':
           return <PriestDashboard role="school" timeframe={toPriestTimeframe(timeframe)} year={year} onYearChange={setYear} onNavigate={setActiveTab} onLogout={handleLogout} />;
+        case 'school-data-submission':
+          return <ParishDataSubmission parishName="San Pablo Diocesan Catholic School" vicariate="St. John the Baptist Vicariate" parishClass="School" year={year} onBack={() => setActiveTab('school')} />;
         case 'school-aitwin':
           return <AITwin mode="school" />;
         case 'projects':

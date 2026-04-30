@@ -310,6 +310,7 @@ export function PriestDashboard({
   const [comparisonYear2, setComparisonYear2] = useState<(typeof COMPARISON_YEAR_OPTIONS)[number]>('2026');
   const [medicalStatusFilter, setMedicalStatusFilter] = useState<'all' | 'urgent' | 'followup'>('all');
   const [priestScope, setPriestScope] = useState<'overall' | 'specific'>('overall');
+  const [showFormulaModal, setShowFormulaModal] = useState(false);
 
   // Filter modal state
   const [showFilterModal, setShowFilterModal] = useState(false);
@@ -854,6 +855,44 @@ export function PriestDashboard({
   const isPriestOverallView = isPriestDashboardContext && priestScope === 'overall';
   const healthTrendText = healthScore?.trend === 'up' ? 'Improving' : healthScore?.trend === 'down' ? 'Declining' : 'Stable';
 
+  // Parish-Adjusted Stewardship Score = 100 × (Actual / Predicted)  [percentage]
+  // Stewardship Lift % = Score − 100
+  const stewardshipData = useMemo(() => {
+    const classBenchmarks: Record<string, number> = {
+      'Class A': 3_500_000, 'Class B': 2_000_000,
+      'Class C': 1_200_000, 'Class D': 700_000,
+    };
+    const predicted = classBenchmarks[entityInfo?.class ?? ''] ?? 1_500_000;
+    // Use monthly average so the scale matches the monthly benchmark
+    const months = filteredRecords.length > 0 ? filteredRecords.length : 1;
+    const totalCollections = kpis?.totalCollections ?? predicted;
+    const monthlyActual = Math.round(totalCollections / months);
+    const rawRatio = monthlyActual / predicted;          // e.g. 1.08
+    const score = Math.round(rawRatio * 100);            // e.g. 108  (%)
+    const lift = score - 100;                            // e.g. +8%
+    const status = score >= 105 ? 'Overperforming' : score >= 95 ? 'On Target' : score >= 80 ? 'Below Target' : 'Underperforming';
+    const statusColor = score >= 105 ? 'text-emerald-600 bg-emerald-50 border-emerald-100'
+      : score >= 95 ? 'text-blue-600 bg-blue-50 border-blue-100'
+      : score >= 80 ? 'text-amber-600 bg-amber-50 border-amber-100'
+      : 'text-red-600 bg-red-50 border-red-100';
+    return { predicted, actual: monthlyActual, score, lift, status, statusColor };
+  }, [entityInfo?.class, kpis?.totalCollections, filteredRecords.length]);
+
+  // Per-priest stewardship scores for diocese view
+  const priestStewardshipData = useMemo(() => {
+    const classBenchmarks: Record<string, number> = {
+      'Class A': 3_500_000, 'Class B': 2_000_000,
+      'Class C': 1_200_000, 'Class D': 700_000,
+    };
+    return diocesanPriestData.map(p => {
+      const predicted = 1_200_000; // default benchmark per priest
+      const actual = p.avgCollections;
+      const score = Math.round(100 * actual / predicted);
+      const lift = score - 100;
+      return { ...p, predicted, actual, score, lift };
+    });
+  }, [diocesanPriestData]);
+
   const displayEntityName = useMemo(() => {
     if (isPriestOverallView) return 'All Priests in Diocese';
     return entityInfo.name;
@@ -886,28 +925,6 @@ export function PriestDashboard({
 
   return (
     <>
-      {role !== 'priest' && (
-        <DashboardHeader 
-          title="Parish Financial Dashboard"
-          subtitle={entityInfo.name}
-          priestName="Parish Priest: Rev. Fr. Noel Artillaga"
-          userInitial={auth.currentUser?.email?.[0]?.toUpperCase() || 'P'}
-          timeframe={timeframe as '3m' | '6m' | '12m'}
-          onTimeframeChange={(tf) => {
-            // Since timeframe is passed as prop, we need onTimeframeChange from props
-            // For now, just trigger year change for demo
-          }}
-          year={year}
-          onYearChange={onYearChange}
-          onSettingsClick={() => {
-            onNavigate?.('settings');
-          }}
-          onLogout={() => {
-            localStorage.removeItem('currentUser');
-            onLogout?.();
-          }}
-        />
-      )}
 
       {isPriestDashboardContext && (
         <div className="max-w-[1800px] mx-auto px-4 md:px-6 lg:px-12 pt-4 md:pt-5">
@@ -1354,47 +1371,32 @@ export function PriestDashboard({
                     </div>
                     <span className="text-[9px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-lg font-black uppercase tracking-wider border border-emerald-100">Submitted</span>
                   </div>
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100 group/item hover:bg-gold-50 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm border border-gray-100 text-church-green">
-                        <Activity size={16} />
+                  <div className="mt-4 border-t border-gray-200 pt-4">
+                    <p className="mb-3 text-[10px] font-black uppercase tracking-widest text-gray-500">Data Management</p>
+                    <div className="rounded-xl border border-red-200 bg-red-50 p-4 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle size={14} className="text-red-600 flex-shrink-0" />
+                        <span className="text-xs font-bold text-red-700">Not Submitted</span>
                       </div>
-                      <span className="text-xs font-bold text-gray-600">Quarterly Audit</span>
+                      <div className="space-y-1 text-[11px] text-red-700">
+                        <p><strong>Next Deadline:</strong> May 15, 2026</p>
+                        <p><strong>Status:</strong> No submission yet</p>
+                      </div>
+                      <button
+                        onClick={() => onNavigate?.(role === 'school' ? 'school-data-submission' : role === 'seminary' ? 'seminary-data-submission' : 'parish-data-submission')}
+                        className="w-full rounded-lg bg-church-green px-4 py-2.5 text-xs font-bold text-white transition-colors hover:bg-church-green/90 flex items-center justify-center gap-2"
+                      >
+                        <FileText size={14} />
+                        Submit IAFR
+                      </button>
                     </div>
-                    <span className="text-[9px] bg-orange-50 text-orange-700 px-2 py-0.5 rounded-lg font-black uppercase tracking-wider border border-orange-100">Pending</span>
                   </div>
-
-                  {role !== 'seminary' && (
-                    <div className="mt-4 border-t border-gray-200 pt-4">
-                      <div className="mb-3">
-                        <p className="mb-3 text-[10px] font-black uppercase tracking-widest text-gray-500">Data Management</p>
-                        <DataImportExport
-                          entityName={entityInfo.name}
-                          entityType={mappedType as 'parish' | 'school' | 'seminary'}
-                          year={year || 2026}
-                          onImport={handleImportRecords}
-                        />
-                      </div>
-                    </div>
-                  )}
                 </>
               )}
             </div>
           </div>
         </FadeIn>
       </div>
-
-      {role === 'seminary' && (
-        <FadeIn direction="up" delay={0.15}>
-          <DataImportExport
-            entityName={entityInfo.name}
-            entityType="seminary"
-            year={year || 2026}
-            onImport={handleImportRecords}
-          />
-        </FadeIn>
-      )}
-
 
       {/* Diagnostic Insights Section */}
       {selectedDiagnostic && (
@@ -1580,59 +1582,158 @@ export function PriestDashboard({
                       <HeartPulse size={20} />
                     </div>
                     <h3 className="text-xl md:text-2xl font-black text-church-green tracking-tight uppercase">{entityLabel} Performance Score</h3>
-                    <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-emerald-100 shadow-sm">
-                      <TrendingUp size={12} />
-                      <span>{healthTrendText}</span>
-                    </div>
+                    <span className={`text-[10px] font-black uppercase px-3 py-1 rounded-full border ${stewardshipData.statusColor}`}>
+                      {stewardshipData.status}
+                    </span>
                   </div>
                   <p className="text-sm text-gray-400 font-medium md:ml-13">
-                    Composite analysis for {entityInfo.name} based on liquidity, sustainability, efficiency, stability, and growth.
+                    Parish-Adjusted Stewardship Score — measures actual donations relative to model-predicted donations for this entity.
                   </p>
                 </div>
-                <div className="flex flex-col items-start md:items-end bg-gray-50 px-4 py-2 rounded-2xl border border-gray-100">
-                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Change</span>
-                  <span className={`text-xs font-black ${healthScore.percentageChange >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
-                    {healthScore.percentageChange >= 0 ? '+' : ''}{healthScore.percentageChange.toFixed(1)}%
-                  </span>
-                </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
-                <div className="lg:col-span-5 flex items-center justify-center">
-                  <FinancialHealthGauge
-                    score={healthScore.compositeScore}
-                    size={220}
-                    description={`${entityInfo.name} is currently in a ${healthTrendText.toLowerCase()} financial health position.`}
-                  />
-                </div>
-                <div className="lg:col-span-7">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-3">
-                    <div className="sm:col-span-2 mb-1 flex items-center justify-between">
-                      <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em]">Health Dimensions</h4>
-                      <div className="h-px flex-1 bg-gradient-to-r from-gray-100 to-transparent mx-4"></div>
+              {/* Main Score Display */}
+              <div className="mt-4 bg-gradient-to-br from-church-green to-[#0f2d1a] rounded-2xl p-8 relative overflow-hidden">
+                {/* Background decoration */}
+                <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-20 -mt-20 blur-3xl pointer-events-none" />
+                <div className="absolute bottom-0 left-0 w-40 h-40 bg-[#D4AF37]/10 rounded-full -ml-10 -mb-10 blur-2xl pointer-events-none" />
+
+                <div className="relative z-10 flex flex-col md:flex-row md:items-center gap-8">
+                  {/* Hero Score */}
+                  <div className="flex flex-col items-center md:items-start">
+                    <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/40 mb-1">Parish-Adjusted Stewardship Score</p>
+                    <div className="flex items-end gap-1">
+                      <span className="text-[clamp(4rem,8vw,6rem)] font-black text-white leading-none tracking-tight">{stewardshipData.score}</span>
+                      <span className="text-3xl font-black text-[#D4AF37] mb-2">%</span>
                     </div>
-                    <HealthDimensionBar label="Liquidity" score={healthScore.dimensions.liquidity} weight={30} />
-                    <HealthDimensionBar label="Sustainability" score={healthScore.dimensions.sustainability} weight={25} />
-                    <HealthDimensionBar label="Efficiency" score={healthScore.dimensions.efficiency} weight={20} />
-                    <HealthDimensionBar label="Stability" score={healthScore.dimensions.stability} weight={15} />
-                    <div className="sm:col-span-2">
-                      <HealthDimensionBar label="Growth" score={healthScore.dimensions.growth} weight={10} />
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase border ${
+                        stewardshipData.lift >= 5 ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                        : stewardshipData.lift >= 0 ? 'bg-blue-500/20 text-blue-300 border-blue-500/30'
+                        : 'bg-red-500/20 text-red-300 border-red-500/30'
+                      }`}>
+                        {stewardshipData.lift >= 0 ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}
+                        Lift: {stewardshipData.lift >= 0 ? '+' : ''}{stewardshipData.lift}%
+                      </span>
+                      <span className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase border ${stewardshipData.statusColor}`}>
+                        {stewardshipData.status}
+                      </span>
                     </div>
+                    <p className="text-[10px] text-white/40 mt-2 font-semibold">100% = On Target &nbsp;·&nbsp; {entityInfo.class} benchmark</p>
                   </div>
 
-                  <div className="mt-6 p-4 bg-gradient-to-br from-church-green/5 to-transparent rounded-3xl border border-church-green/10 flex items-start gap-4 relative overflow-hidden">
-                    <div className="w-12 h-12 rounded-2xl bg-gold-500 text-black flex items-center justify-center shrink-0 shadow-xl shadow-gold-500/20">
-                      <BrainCircuit size={24} />
+                  {/* Divider */}
+                  <div className="hidden md:block w-px h-28 bg-white/10" />
+
+                  {/* Supporting Metrics */}
+                  <div className="flex flex-col sm:flex-row gap-5 flex-1">
+                    <div className="flex-1">
+                      <p className="text-[9px] font-black uppercase tracking-widest text-white/40 mb-1">Avg Monthly Actual</p>
+                      <p className="text-2xl font-black text-white">{formatCurrency(stewardshipData.actual)}</p>
+                      <p className="text-[10px] text-white/40 mt-0.5">Collections / month</p>
                     </div>
-                    <div className="relative z-10">
-                      <h5 className="text-[10px] font-black text-church-green uppercase tracking-[0.2em] mb-1.5">Steward's Insight</h5>
-                      <p className="text-sm text-gray-600 leading-relaxed font-medium">
-                        {healthScore.analysis || 'Use the dimension scores to identify where the parish needs closer monitoring and which areas can support future planning.'}
+                    <div className="hidden sm:block w-px h-16 bg-white/10 self-center" />
+                    <div className="flex-1">
+                      <p className="text-[9px] font-black uppercase tracking-widest text-white/40 mb-1">Model-Predicted</p>
+                      <p className="text-2xl font-black text-[#D4AF37]">{formatCurrency(stewardshipData.predicted)}</p>
+                      <p className="text-[10px] text-white/40 mt-0.5">{entityInfo.class} monthly benchmark</p>
+                    </div>
+                    <div className="hidden sm:block w-px h-16 bg-white/10 self-center" />
+                    <div className="flex-1 flex flex-col justify-center">
+                      <p className="text-[9px] font-black uppercase tracking-widest text-white/40 mb-2">Gap vs Target</p>
+                      <p className={`text-2xl font-black ${stewardshipData.actual >= stewardshipData.predicted ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {stewardshipData.actual >= stewardshipData.predicted ? '+' : ''}{formatCurrency(stewardshipData.actual - stewardshipData.predicted)}
                       </p>
+                      <p className="text-[10px] text-white/40 mt-0.5">Actual minus predicted</p>
+                    </div>
+                  </div>
+
+                  {/* Formula Button */}
+                  <button
+                    onClick={() => setShowFormulaModal(true)}
+                    className="self-start md:self-center flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-[10px] font-black text-white uppercase tracking-widest transition-colors"
+                  >
+                    <Info size={13} />
+                    Formula
+                  </button>
+                </div>
+              </div>
+
+              {/* Formula Modal */}
+              {showFormulaModal && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4" onClick={() => setShowFormulaModal(false)}>
+                  <div className="bg-[#111111] rounded-2xl p-8 max-w-lg w-full shadow-2xl border border-white/10" onClick={e => e.stopPropagation()}>
+                    <div className="flex items-center justify-between mb-6">
+                      <h3 className="text-xl font-black text-white">Stewardship Score Formula</h3>
+                      <button onClick={() => setShowFormulaModal(false)} className="p-2 hover:bg-white/10 rounded-full transition-colors text-white"><X size={18} /></button>
+                    </div>
+                    <div className="space-y-5 text-white">
+                      <div className="bg-white/5 rounded-xl p-5 border border-white/10">
+                        <p className="text-[10px] font-black text-[#D4AF37] uppercase tracking-widest mb-2">Main Score</p>
+                        <p className="text-base font-bold">Parish-Adjusted Stewardship Score</p>
+                        <p className="text-[#D4AF37] font-black text-lg mt-1">= 100 × (Actual Donations ÷ Model-Predicted Donations)</p>
+                      </div>
+                      <div className="bg-white/5 rounded-xl p-5 border border-white/10">
+                        <p className="text-[10px] font-black text-[#D4AF37] uppercase tracking-widest mb-2">Companion Metric</p>
+                        <p className="text-base font-bold">Stewardship Lift %</p>
+                        <p className="text-[#D4AF37] font-black text-lg mt-1">= 100 × (Actual − Predicted) ÷ Predicted</p>
+                        <p className="text-white/40 text-xs mt-1">Equivalent to: Score − 100</p>
+                      </div>
+                      <div className="grid grid-cols-3 gap-3 text-center text-xs">
+                        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3">
+                          <p className="font-black text-emerald-400 text-base">&gt; 100%</p>
+                          <p className="text-white/60 mt-1">Overperforming</p>
+                        </div>
+                        <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3">
+                          <p className="font-black text-blue-400 text-base">= 100%</p>
+                          <p className="text-white/60 mt-1">On Target</p>
+                        </div>
+                        <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3">
+                          <p className="font-black text-red-400 text-base">&lt; 100%</p>
+                          <p className="text-white/60 mt-1">Underperforming</p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
+
+              {/* Diocese-wide stewardship table */}
+              {isPriestDashboardContext && (
+                <div className="mt-6 overflow-x-auto">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] mb-3">All Priests — Stewardship Scores</p>
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 border-b border-gray-100">
+                        <th className="py-2 pr-4">Priest</th>
+                        <th className="py-2 pr-4">Entity</th>
+                        <th className="py-2 pr-4 text-right">Actual</th>
+                        <th className="py-2 pr-4 text-right">Predicted</th>
+                        <th className="py-2 pr-4 text-center">Score</th>
+                        <th className="py-2 text-center">Lift %</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {priestStewardshipData.map((p, i) => (
+                        <tr key={i} className="border-b border-gray-50 hover:bg-gray-50">
+                          <td className="py-3 pr-4 font-bold text-church-green">{p.name}</td>
+                          <td className="py-3 pr-4 text-xs text-gray-500">{p.entity}</td>
+                          <td className="py-3 pr-4 text-right font-semibold">{formatCurrency(p.actual)}</td>
+                          <td className="py-3 pr-4 text-right text-gray-500">{formatCurrency(p.predicted)}</td>
+                          <td className="py-3 pr-4 text-center">
+                            <span className={`font-black text-sm ${p.score >= 100 ? 'text-emerald-600' : p.score >= 80 ? 'text-amber-600' : 'text-red-600'}`}>{p.score}</span>
+                          </td>
+                          <td className="py-3 text-center">
+                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${p.lift >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+                              {p.lift >= 0 ? '+' : ''}{p.lift}%
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
 
@@ -1941,7 +2042,7 @@ export function PriestDashboard({
               <p className="text-xs text-gray-400 mt-1">Based on collection trend, disbursement discipline, and submission consistency</p>
             </div>
             {(() => {
-              const base = healthScore?.compositeScore ?? 72;
+              const base = stewardshipData.score;
               const scoreData = [
                 { month: 'Aug', score: Math.max(0, base - 8), forecast: null },
                 { month: 'Sep', score: Math.max(0, base - 5), forecast: null },
@@ -1949,9 +2050,9 @@ export function PriestDashboard({
                 { month: 'Nov', score: Math.max(0, base - 1), forecast: null },
                 { month: 'Dec', score: Math.max(0, base + 1), forecast: null },
                 { month: 'Jan', score: base, forecast: base },
-                { month: 'Feb', score: null, forecast: Math.min(100, base + 4) },
-                { month: 'Mar', score: null, forecast: Math.min(100, base + 7) },
-                { month: 'Apr', score: null, forecast: Math.min(100, base + 10) },
+                { month: 'Feb', score: null, forecast: Math.round(base * 1.04) },
+                { month: 'Mar', score: null, forecast: Math.round(base * 1.07) },
+                { month: 'Apr', score: null, forecast: Math.round(base * 1.10) },
               ];
               return (
                 <div className="h-[320px]">
@@ -1995,10 +2096,10 @@ export function PriestDashboard({
                     </tr>
                   </thead>
                   <tbody>
-                    {diocesanPriestData.map((p, i) => {
-                      const current = p.disciplineScore;
-                      const change = p.collectionChange >= 0 ? Math.min(5, Math.round(p.collectionChange / 3)) : Math.max(-5, Math.round(p.collectionChange / 3));
-                      const projected = Math.min(100, Math.max(0, current + change));
+                    {priestStewardshipData.map((p, i) => {
+                      const current = p.score;
+                      const change = p.collectionChange >= 0 ? Math.min(8, Math.round(p.collectionChange / 2)) : Math.max(-8, Math.round(p.collectionChange / 2));
+                      const projected = Math.max(0, current + change);
                       return (
                         <tr key={i} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
                           <td className="py-3 pr-4 font-bold text-church-green">{p.name}</td>
@@ -2033,126 +2134,169 @@ export function PriestDashboard({
 
       {analyticsView === 'prescriptive' && (
         <div className="space-y-6">
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+
+          {/* Header */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.25em] text-gray-400">Prescriptive Analytics</p>
-                <h3 className="text-lg font-black text-church-green">How to Increase the Performance Score</h3>
+                <p className="text-[10px] font-black uppercase tracking-[0.25em] text-gray-400 mb-1">Prescriptive Analytics</p>
+                <h3 className="text-xl font-black text-church-green">Recommendations / Strategies</h3>
+                <p className="text-xs text-gray-400 mt-1">
+                  Actions to improve the <span className="font-bold text-church-green">Parish-Adjusted Stewardship Score</span> — which measures how well actual donations compare to what the parish is expected to generate.
+                </p>
               </div>
-              <div className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-wide text-gray-500 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2">
-                <Zap size={12} />
-                <span>Action-based improvement plan</span>
+              <div className={`flex-shrink-0 flex items-center gap-2 text-[10px] font-black uppercase px-4 py-2 rounded-xl border ${stewardshipData.statusColor}`}>
+                <span>Score: {stewardshipData.score}%</span>
+                <span className="opacity-40">|</span>
+                <span>Lift: {stewardshipData.lift >= 0 ? '+' : ''}{stewardshipData.lift}%</span>
+                <span className="opacity-40">|</span>
+                <span>{stewardshipData.status}</span>
               </div>
             </div>
           </div>
 
-          {/* Score Dimension Actions */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {[
-              {
-                dimension: 'Liquidity',
-                weight: '30%',
-                score: healthScore?.dimensions?.liquidity ?? 65,
-                color: 'emerald',
-                icon: Activity,
-                actions: [
-                  'Ensure collections are remitted within the month they are received.',
-                  'Avoid large one-time disbursements — spread out major expenses quarterly.',
-                  'Maintain at least one month of operating expenses as reserve.',
-                ],
-              },
-              {
-                dimension: 'Sustainability',
-                weight: '25%',
-                score: healthScore?.dimensions?.sustainability ?? 58,
-                color: 'blue',
-                icon: Target,
-                actions: [
-                  'Reduce reliance on a single collection source (e.g., Sunday mass).',
-                  'Grow sacramental collections (baptisms, weddings, confirmations).',
-                  'Launch at least one annual fundraising drive per parish.',
-                ],
-              },
-              {
-                dimension: 'Efficiency',
-                weight: '20%',
-                score: healthScore?.dimensions?.efficiency ?? 70,
-                color: 'gold-600',
-                icon: Zap,
-                actions: [
-                  'Keep disbursements below 85% of monthly collections.',
-                  'Shift to LED lighting and review utility usage peaks.',
-                  'Batch procurement with neighboring parishes to cut supply costs.',
-                ],
-              },
-              {
-                dimension: 'Stability',
-                weight: '15%',
-                score: healthScore?.dimensions?.stability ?? 62,
-                color: 'purple',
-                icon: Award,
-                actions: [
-                  'Submit monthly financial reports on time every reporting period.',
-                  'Avoid months with zero or near-zero collections — ensure coverage.',
-                  'Keep net surplus positive for at least 3 consecutive months.',
-                ],
-              },
-              {
-                dimension: 'Growth',
-                weight: '10%',
-                score: healthScore?.dimensions?.growth ?? 55,
-                color: 'orange',
-                icon: TrendingUp,
-                actions: [
-                  'Target a minimum of 5% quarter-over-quarter collection growth.',
-                  'Engage the parish community in tithing and pledge programs.',
-                  'Track and celebrate monthly collection milestones with the community.',
-                ],
-              },
-            ].map((item, i) => {
-              const Icon = item.icon;
-              const statusColor = item.score >= 75 ? 'text-emerald-600 bg-emerald-50' : item.score >= 50 ? 'text-amber-600 bg-amber-50' : 'text-red-600 bg-red-50';
-              return (
-                <div key={i} className={`bg-white rounded-2xl p-6 shadow-sm border border-gray-200 ${i === 4 ? 'md:col-span-2' : ''}`}>
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-church-green/10 flex items-center justify-center">
-                        <Icon size={16} className="text-church-green" />
-                      </div>
+          {/* Strategy 1 */}
+          <div className="bg-white rounded-2xl border-2 border-church-green/20 overflow-hidden shadow-sm">
+            <div className="flex items-center gap-3 px-6 py-4 border-b-2 border-church-green/10 bg-church-green/5">
+              <div className="w-8 h-8 rounded-lg bg-church-green flex items-center justify-center flex-shrink-0">
+                <Target size={15} className="text-white" />
+              </div>
+              <div>
+                <h4 className="text-sm font-black text-church-green">Reduce the Predicted-Actual Collection Gap</h4>
+                <p className="text-[10px] text-gray-500 font-medium">Close the gap between what the parish is expected to collect and what it actually collects</p>
+              </div>
+              <span className="ml-auto text-[9px] font-black text-[#D4AF37] bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full uppercase tracking-wider flex-shrink-0">Strategy 1</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-gray-100">
+              <div className="p-6">
+                <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-4">Methods</p>
+                <ul className="space-y-3">
+                  {[
+                    'Collection gap analysis — compares monthly actual collections vs model-predicted amounts',
+                    'Month-over-month variance detection — flags months where collections suddenly dropped',
+                    'Rule-based low-performance alert — triggers when actual falls below 80% of predicted',
+                    'Peer benchmarking — compares the priest\'s entity against similar Class parishes',
+                  ].map((m, i) => (
+                    <li key={i} className="flex items-start gap-2 text-xs text-gray-600">
+                      <span className="w-1.5 h-1.5 rounded-full bg-church-green mt-1.5 flex-shrink-0" />{m}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="p-6 bg-amber-50/40">
+                <p className="text-[9px] font-black uppercase tracking-widest text-[#D4AF37] mb-4">KPI / Metric</p>
+                <ul className="space-y-4">
+                  {[
+                    { label: 'Monthly Collection Gap (₱)', desc: 'Actual − Predicted. Target: ₱0 or positive' },
+                    { label: 'Stewardship Lift %', desc: 'Target: ≥ 0% (meaning actual ≥ predicted)' },
+                    { label: 'Consecutive Months On-Target', desc: 'How many months in a row the score is ≥ 100%' },
+                  ].map((k, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#D4AF37] mt-1.5 flex-shrink-0" />
                       <div>
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Dimension · {item.weight} weight</p>
-                        <h4 className="text-base font-black text-church-green">{item.dimension}</h4>
+                        <p className="text-xs font-black text-gray-800">{k.label}</p>
+                        <p className="text-[10px] text-gray-500 mt-0.5">{k.desc}</p>
                       </div>
-                    </div>
-                    <span className={`text-sm font-black px-3 py-1 rounded-full ${statusColor}`}>{item.score}/100</span>
-                  </div>
-                  <ul className="space-y-2">
-                    {item.actions.map((action, j) => (
-                      <li key={j} className="flex items-start gap-2.5 text-sm text-gray-600">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#D4AF37] mt-2 flex-shrink-0" />
-                        {action}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              );
-            })}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="p-6 bg-church-green/5">
+                <p className="text-[9px] font-black uppercase tracking-widest text-church-green mb-4">System Output</p>
+                <ul className="space-y-3">
+                  {[
+                    'Identify and flag the 2–3 months per year where collections fall furthest below predicted — prioritize action in those months',
+                    'Issue a peak-season engagement advisory before Holy Week and Christmas to maximize offertory',
+                    'Generate a benchmark report comparing this entity to the top 3 same-class parishes in the vicariate',
+                    'Alert the bishop if the Stewardship Lift % is negative for 3 or more consecutive months',
+                  ].map((o, i) => (
+                    <li key={i} className="flex items-start gap-2 text-xs text-gray-600">
+                      <span className="w-1.5 h-1.5 rounded-full bg-church-green/50 mt-1.5 flex-shrink-0" />{o}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
           </div>
 
-          {/* Quick Wins Summary */}
+          {/* Strategy 2 */}
+          <div className="bg-white rounded-2xl border-2 border-church-green/20 overflow-hidden shadow-sm">
+            <div className="flex items-center gap-3 px-6 py-4 border-b-2 border-church-green/10 bg-church-green/5">
+              <div className="w-8 h-8 rounded-lg bg-church-green flex items-center justify-center flex-shrink-0">
+                <Award size={15} className="text-white" />
+              </div>
+              <div>
+                <h4 className="text-sm font-black text-church-green">Improve Disbursement Discipline</h4>
+                <p className="text-[10px] text-gray-500 font-medium">Ensure the parish spends within healthy limits and maintains a positive monthly net surplus</p>
+              </div>
+              <span className="ml-auto text-[9px] font-black text-[#D4AF37] bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full uppercase tracking-wider flex-shrink-0">Strategy 2</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-gray-100">
+              <div className="p-6">
+                <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-4">Methods</p>
+                <ul className="space-y-3">
+                  {[
+                    'Disbursement ratio tracking — monthly disbursements ÷ monthly collections',
+                    'Rule-based overspending alert — triggers when ratio exceeds 85%',
+                    'Expense categorization — groups spending into Personnel, Operations, Maintenance, and Events',
+                    'Submission timeliness tracking — monitors whether monthly reports are filed on time',
+                  ].map((m, i) => (
+                    <li key={i} className="flex items-start gap-2 text-xs text-gray-600">
+                      <span className="w-1.5 h-1.5 rounded-full bg-church-green mt-1.5 flex-shrink-0" />{m}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="p-6 bg-amber-50/40">
+                <p className="text-[9px] font-black uppercase tracking-widest text-[#D4AF37] mb-4">KPI / Metric</p>
+                <ul className="space-y-4">
+                  {[
+                    { label: 'Disbursement Ratio (%)', desc: 'Target: ≤ 85% of monthly collections' },
+                    { label: 'Net Monthly Surplus (₱)', desc: 'Target: positive every month' },
+                    { label: 'Report Submission Timeliness', desc: 'On-time = filed within the reporting deadline' },
+                  ].map((k, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#D4AF37] mt-1.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-xs font-black text-gray-800">{k.label}</p>
+                        <p className="text-[10px] text-gray-500 mt-0.5">{k.desc}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="p-6 bg-church-green/5">
+                <p className="text-[9px] font-black uppercase tracking-widest text-church-green mb-4">System Output</p>
+                <ul className="space-y-3">
+                  {[
+                    'Issue an overspending alert whenever the disbursement ratio exceeds 85% in a given month',
+                    'Recommend deferring non-urgent capital expenses to months with historically high collections (April, December)',
+                    'Flag months where net surplus is negative and notify the bishop automatically',
+                    'Send a report submission reminder 3 days before the deadline to avoid late penalties',
+                  ].map((o, i) => (
+                    <li key={i} className="flex items-start gap-2 text-xs text-gray-600">
+                      <span className="w-1.5 h-1.5 rounded-full bg-church-green/50 mt-1.5 flex-shrink-0" />{o}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Wins */}
           <div className="bg-[#1a472a] rounded-2xl p-6">
             <p className="text-[10px] font-black text-[#D4AF37] uppercase tracking-widest mb-1">Quick Wins</p>
-            <h3 className="text-xl font-black text-white mb-4">Top 3 Actions to Boost Score This Month</h3>
+            <h3 className="text-xl font-black text-white mb-4">Top 3 Immediate Actions This Month</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {[
-                { rank: '01', action: 'Submit this month\'s financial report on time', impact: '+5 pts Stability', color: 'border-emerald-500' },
-                { rank: '02', action: 'Keep disbursements below 85% of collections', impact: '+4 pts Efficiency', color: 'border-[#D4AF37]' },
-                { rank: '03', action: 'Grow collections by at least 3% vs last month', impact: '+3 pts Growth', color: 'border-blue-400' },
+                { rank: '01', action: 'Review last month\'s collections vs predicted — identify the biggest drop and plan a focused offertory drive for the next 4 Sundays', impact: 'Closes Gap vs Predicted', color: 'border-emerald-500' },
+                { rank: '02', action: 'Check this month\'s disbursement ratio — if above 85%, identify which expense category is over-budget and defer it to next quarter', impact: 'Reduces Disbursement Ratio', color: 'border-[#D4AF37]' },
+                { rank: '03', action: 'Submit the monthly financial report before the deadline to maintain a clean stewardship record', impact: 'Avoids Score Penalty', color: 'border-blue-400' },
               ].map((item, i) => (
-                <div key={i} className={`bg-white/10 rounded-xl p-4 border-l-4 ${item.color}`}>
-                  <p className="text-2xl font-black text-white/30 mb-1">{item.rank}</p>
+                <div key={i} className={`bg-white/10 rounded-xl p-5 border-l-4 ${item.color}`}>
+                  <p className="text-3xl font-black text-white/20 mb-2 leading-none">{item.rank}</p>
                   <p className="text-sm font-bold text-white leading-snug">{item.action}</p>
-                  <span className="inline-block mt-2 text-[10px] font-black text-[#D4AF37] bg-[#D4AF37]/10 px-2 py-0.5 rounded-full">{item.impact}</span>
+                  <span className="inline-block mt-3 text-[10px] font-black text-[#D4AF37] bg-[#D4AF37]/10 px-2 py-0.5 rounded-full">{item.impact}</span>
                 </div>
               ))}
             </div>

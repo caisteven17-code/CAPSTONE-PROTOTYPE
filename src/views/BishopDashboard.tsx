@@ -3,7 +3,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
   Filter, ChevronDown, Bell, AlertTriangle, AlertCircle, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, ArrowUpDown,
-  ArrowUp, ArrowDown, MapPin, BrainCircuit, HeartPulse, Info, X, Search, Sparkles, ArrowLeft, ChevronRight, Cpu, CheckCircle
+  ArrowUp, ArrowDown, MapPin, BrainCircuit, HeartPulse, Info, X, Search, Sparkles, ArrowLeft, ChevronRight, Cpu, CheckCircle,
+  FileText, Activity
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { 
@@ -27,6 +28,7 @@ import { StewardChatbot } from '../components/ui/StewardChatbot';
 import { motion, AnimatePresence } from 'motion/react';
 import { formatCurrency, formatNumber } from '../lib/format';
 import SeminaryAnalyticsDashboard from '../components/analytics/SeminaryAnalyticsDashboard';
+import { DataImportExport } from '../components/projects/DataImportExport';
 
 
 const weeklyDeclineDataRaw = [
@@ -662,6 +664,7 @@ interface BishopDashboardProps {
   year?: number;
   onYearChange?: (year: number) => void;
   isEmbedded?: boolean;
+  onNavigate?: (page: string) => void;
 }
 
 const stripVicariatePrefix = (name: string) => name.replace('Vicariate of ', '').replace(/ Parish$/, '');
@@ -693,14 +696,15 @@ const CustomizedTick = (props: any) => {
   );
 };
 
-export function BishopDashboard({ 
-  initialEntityType = 'Parishes', 
+export function BishopDashboard({
+  initialEntityType = 'Parishes',
   initialEntityFilter,
   lockEntityFilter = false,
   timeframe = '6m',
   year = 2026,
   onYearChange,
-  isEmbedded = false
+  isEmbedded = false,
+  onNavigate,
 }: BishopDashboardProps) {
   const [analyticsView, setAnalyticsView] = useState<'descriptive' | 'predictive' | 'prescriptive' | 'health'>('descriptive');
   const [entityType, setEntityType] = useState(initialEntityType);
@@ -1269,25 +1273,94 @@ export function BishopDashboard({
           <div className="space-y-6 relative z-10 p-2">
             <div className="inline-flex items-center gap-2 bg-gold-50 text-gold-600 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.2em] border border-gold-100 shadow-sm">
               <Sparkles size={12} />
-              <span>Welcome Back</span>
+              <span>{filterMode === 'per-entity' && entityFilter !== 'All Entities' ? 'Welcome' : 'Welcome Back'}</span>
             </div>
-            <h2 className="font-serif text-5xl text-church-green leading-[1.1] tracking-tight">
-              A warm greeting in the <br />
-              name of <span className="text-gold-600 italic">Jesus Christ.</span>
-            </h2>
-            <div className="flex flex-wrap items-center gap-3 pt-2">
-              <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 bg-gray-50 border border-gray-100 rounded-lg px-3 py-1.5 shadow-sm">
-                System Overview • {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-              </span>
-              <span className="text-[10px] font-black uppercase tracking-wider text-orange-700 bg-orange-50 border border-orange-100 rounded-lg px-3 py-1.5 shadow-sm flex items-center gap-1.5">
-                <AlertCircle size={12} />
-                {entityType === 'Parishes' ? '9 Parishes' : entityType === 'Seminaries' ? '2 Seminaries' : '3 Schools'} pending Submission
-              </span>
-            </div>
+            {filterMode === 'per-entity' && entityFilter !== 'All Entities' ? (
+              <>
+                <h2 className="font-serif text-5xl text-church-green leading-[1.1] tracking-tight">
+                  {entityType === 'Seminaries' ? 'Seminary' : entityType === 'Diocesan Schools' ? 'School' : 'Parish'} <br />
+                  <span className="text-gold-600 italic">Dashboard</span>
+                </h2>
+                <div className="flex flex-wrap items-center gap-3 pt-2">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-gray-600 bg-gray-50 border border-gray-100 rounded-lg px-3 py-1.5 shadow-sm">
+                    {entityFilter}
+                  </span>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 className="font-serif text-5xl text-church-green leading-[1.1] tracking-tight">
+                  A warm greeting in the <br />
+                  name of <span className="text-gold-600 italic">Jesus Christ.</span>
+                </h2>
+                <div className="flex flex-wrap items-center gap-3 pt-2">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 bg-gray-50 border border-gray-100 rounded-lg px-3 py-1.5 shadow-sm">
+                    System Overview • {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                  </span>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-orange-700 bg-orange-50 border border-orange-100 rounded-lg px-3 py-1.5 shadow-sm flex items-center gap-1.5">
+                    <AlertCircle size={12} />
+                    {entityType === 'Parishes' ? '9 Parishes' : entityType === 'Seminaries' ? '2 Seminaries' : '3 Schools'} pending Submission
+                  </span>
+                </div>
+              </>
+            )}
           </div>
         </Card>
 
-        {/* Submission Tracking */}
+        {/* Parish Profile — per-entity mode */}
+        {filterMode === 'per-entity' && entityFilter !== 'All Entities' ? (
+          <Card className="lg:col-span-2 bg-white border-none shadow-xl relative overflow-hidden group">
+            <div className="absolute top-0 left-0 w-1.5 h-full bg-gold-500 rounded-l-[inherit]"></div>
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gold-500/5 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-gold-500/10 transition-colors duration-700"></div>
+            <CardContent className="relative z-10 pt-6 pl-8">
+              <div className="flex flex-col gap-1 mb-4">
+                <div className="bg-church-green/5 text-church-green px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-widest w-fit border border-church-green/10 mb-1">
+                  {entityType === 'Parishes' ? 'Parish' : entityType === 'Seminaries' ? 'Seminary' : 'School'} Profile
+                </div>
+                <h1 className="text-2xl md:text-3xl font-serif font-black text-church-green tracking-tight leading-tight">
+                  {entityFilter}
+                </h1>
+                <div className="flex items-center gap-2 text-[10px] text-gray-400 font-black uppercase tracking-[0.15em] mt-1">
+                  <span>{filteredEntities[0]?.vicariate ?? '—'} Vicariate</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-gold-500"></span>
+                  <span className="text-gold-600">{filteredEntities[0]?.class ?? '—'}</span>
+                </div>
+              </div>
+              <div className="space-y-2 mb-4">
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100 hover:bg-gold-50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm border border-gray-100 text-church-green">
+                      <FileText size={16} />
+                    </div>
+                    <span className="text-xs font-bold text-gray-600">Monthly Remittance</span>
+                  </div>
+                  <span className="text-[9px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-lg font-black uppercase tracking-wider border border-emerald-100">Submitted</span>
+                </div>
+              </div>
+              <div className="border-t border-gray-200 pt-4">
+                <p className="mb-3 text-[10px] font-black uppercase tracking-widest text-gray-500">Data Management</p>
+                <div className="rounded-xl border border-red-200 bg-red-50 p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
+                    <span className="text-xs font-bold text-red-700">Not Submitted</span>
+                  </div>
+                  <div className="space-y-1 text-[11px] text-red-700">
+                    <p><strong>Next Deadline:</strong> May 15, 2026</p>
+                    <p><strong>Status:</strong> No submission yet</p>
+                  </div>
+                  <button
+                    onClick={() => onNavigate?.('parish-data-submission')}
+                    className="w-full rounded-lg bg-church-green px-4 py-2.5 text-xs font-bold text-white transition-colors hover:bg-church-green/90 flex items-center justify-center gap-2"
+                  >
+                    <FileText size={14} />
+                    Submit IAFR
+                  </button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+        /* Submission Tracking — diocese-wide mode */
         <Card className="lg:col-span-2 bg-white border-none shadow-xl relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/5 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-orange-500/10 transition-colors duration-700"></div>
           <CardHeader className="pb-2 relative z-10">
@@ -1461,86 +1534,65 @@ export function BishopDashboard({
           </>)}
           </CardContent>
         </Card>
+        )}
       </div>
 
       {/* KPIs Row */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
-        <Card className="border-none shadow-xl bg-white overflow-hidden group relative hover:-translate-y-1 transition-all duration-500 min-w-0 min-h-[150px] p-0">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-church-green/5 rounded-full -mr-12 -mt-12 blur-2xl group-hover:bg-church-green/10 transition-colors"></div>
-          <CardHeader className="pb-0 mb-0 items-start relative z-10 px-6 pt-4">
-            <CardTitle className="text-gray-400 text-[11px] font-black uppercase tracking-[0.2em] leading-tight">Monthly Total Collections</CardTitle>
-          </CardHeader>
-          <CardContent className="px-6 pb-4 pt-2 flex flex-col items-start relative z-10 min-w-0">
-            <div className="w-full whitespace-nowrap text-[clamp(1.25rem,1.55vw,1.8rem)] font-black text-church-green tracking-tight mb-2.5 relative z-10 group-hover:scale-[1.01] transition-transform origin-left duration-500">{kpiData.collections}</div>
-            <div className="flex items-center justify-between w-full mt-auto">
-              <div className="flex items-center gap-2">
-                <span className="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg text-[10px] font-black border border-emerald-100 shadow-sm">
-                  <ArrowUpRight className="w-3 h-3" /> +12.5%
-                </span>
-                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">vs LY</span>
-              </div>
-              <button 
-                onClick={() => handleDiagnosticRequest('Jan')}
-                className="w-9 h-9 bg-gray-50 hover:bg-gold-500 hover:text-black rounded-xl text-church-green transition-all duration-300 flex items-center justify-center border border-gray-100 hover:border-gold-600 shadow-sm"
-                title="AI Diagnostic"
-              >
-                <BrainCircuit size={18} />
-              </button>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 mt-6 lg:mt-8">
+        {/* KPI Card — Monthly Total Collections */}
+        <div className="bg-white rounded-2xl shadow-xl hover:-translate-y-1 transition-all duration-500 min-h-[150px] flex flex-col p-5 gap-3">
+          <p className="text-gray-400 text-[11px] font-black uppercase tracking-[0.2em] leading-tight">Monthly Total Collections</p>
+          <div className="text-[clamp(1.3rem,1.6vw,1.9rem)] font-black text-church-green tracking-tight leading-none">{kpiData.collections}</div>
+          <div className="flex items-center gap-2 mt-auto">
+            <span className="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg text-[10px] font-black border border-emerald-100 shadow-sm">
+              <ArrowUpRight className="w-3 h-3" /> +12.5%
+            </span>
+            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">vs LY</span>
+            <button
+              onClick={() => handleDiagnosticRequest('Jan')}
+              className="ml-auto w-8 h-8 bg-gray-50 hover:bg-gold-500 hover:text-black rounded-xl text-church-green transition-all duration-300 flex items-center justify-center border border-gray-100 hover:border-gold-600 shadow-sm"
+              title="AI Diagnostic"
+            >
+              <BrainCircuit size={16} />
+            </button>
+          </div>
+        </div>
 
-        <Card className="border-none shadow-xl bg-white overflow-hidden group relative hover:-translate-y-1 transition-all duration-500 min-w-0 min-h-[150px] p-0">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-gold-500/5 rounded-full -mr-12 -mt-12 blur-2xl group-hover:bg-gold-500/10 transition-colors"></div>
-          <CardHeader className="pb-0 mb-0 items-start relative z-10 px-6 pt-4">
-            <CardTitle className="text-gray-400 text-[11px] font-black uppercase tracking-[0.2em] leading-tight">Consumable Collections</CardTitle>
-          </CardHeader>
-          <CardContent className="px-6 pb-4 pt-2 flex flex-col items-start relative z-10 min-w-0">
-            <div className="w-full whitespace-nowrap text-[clamp(1.25rem,1.55vw,1.8rem)] font-black text-church-green tracking-tight mb-2.5 relative z-10 group-hover:scale-[1.01] transition-transform origin-left duration-500">{kpiData.consumable}</div>
-            <div className="flex items-center gap-2 mt-auto">
-              <span className="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg text-[10px] font-black border border-emerald-100 shadow-sm">
-                <ArrowUpRight className="w-3 h-3" /> +8.1%
-              </span>
-              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">vs LY</span>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="border-none shadow-xl bg-white overflow-hidden group relative hover:-translate-y-1 transition-all duration-500 min-w-0 min-h-[150px] p-0">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-red-500/5 rounded-full -mr-12 -mt-12 blur-2xl group-hover:bg-red-500/10 transition-colors"></div>
-          <CardHeader className="pb-0 mb-0 items-start relative z-10 px-6 pt-4">
-            <CardTitle className="text-gray-400 text-[11px] font-black uppercase tracking-[0.2em] leading-tight">Monthly Disbursements</CardTitle>
-          </CardHeader>
-          <CardContent className="px-6 pb-4 pt-2 flex flex-col items-start relative z-10 min-w-0">
-            <div className="w-full whitespace-nowrap text-[clamp(1.25rem,1.55vw,1.8rem)] font-black text-church-green tracking-tight mb-2.5 relative z-10 group-hover:scale-[1.01] transition-transform origin-left duration-500">{kpiData.disbursements}</div>
-            <div className="flex items-center gap-2 mt-auto">
-              <span className="flex items-center gap-1 bg-red-50 text-red-700 px-2.5 py-1 rounded-lg text-[10px] font-black border border-red-100 shadow-sm">
-                <ArrowUp className="w-3 h-3" /> +5.2%
-              </span>
-              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">vs LY</span>
-            </div>
-          </CardContent>
-        </Card>
+        {/* KPI Card — Consumable Collections */}
+        <div className="bg-white rounded-2xl shadow-xl group hover:-translate-y-1 transition-all duration-500 min-h-[150px] flex flex-col p-5 gap-3">
+          <p className="text-gray-400 text-[11px] font-black uppercase tracking-[0.2em] leading-tight">Consumable Collections</p>
+          <div className="text-[clamp(1.3rem,1.6vw,1.9rem)] font-black text-church-green tracking-tight leading-none">{kpiData.consumable}</div>
+          <div className="flex items-center gap-2 mt-auto">
+            <span className="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg text-[10px] font-black border border-emerald-100 shadow-sm">
+              <ArrowUpRight className="w-3 h-3" /> +8.1%
+            </span>
+            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">vs LY</span>
+          </div>
+        </div>
 
-        <Card className="border-none shadow-xl bg-white overflow-hidden group relative hover:-translate-y-1 transition-all duration-500 min-w-0 min-h-[150px] p-0">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-gold-500/5 rounded-full -mr-12 -mt-12 blur-2xl group-hover:bg-gold-500/10 transition-colors"></div>
-          <CardHeader className="pb-0 mb-0 items-start relative z-10 px-6 pt-4">
-            <CardTitle className="text-gray-400 text-[11px] font-black uppercase tracking-[0.2em] leading-tight">Financial Health Score</CardTitle>
-          </CardHeader>
-          <CardContent className="px-6 pb-4 pt-2 flex flex-col items-start min-w-0">
-            <div className="text-[clamp(2rem,2.5vw,2.65rem)] font-black text-gold-600 tracking-tight mb-2.5 relative z-10 group-hover:scale-[1.02] transition-transform origin-left duration-500">
-              {averageScore}
-            </div>
-            <div className="flex flex-wrap items-center gap-2 mt-auto">
-              <span className="bg-gold-50 text-gold-700 px-2.5 py-1 rounded-lg text-[10px] font-black border border-gold-100">
-                {trendText} Zone
-              </span>
-              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-                Diagnostic
-              </span>
-            </div>
-          </CardContent>
-        </Card>
+        {/* KPI Card — Monthly Disbursements */}
+        <div className="bg-white rounded-2xl shadow-xl group hover:-translate-y-1 transition-all duration-500 min-h-[150px] flex flex-col p-5 gap-3">
+          <p className="text-gray-400 text-[11px] font-black uppercase tracking-[0.2em] leading-tight">Monthly Disbursements</p>
+          <div className="text-[clamp(1.3rem,1.6vw,1.9rem)] font-black text-church-green tracking-tight leading-none">{kpiData.disbursements}</div>
+          <div className="flex items-center gap-2 mt-auto">
+            <span className="flex items-center gap-1 bg-red-50 text-red-700 px-2.5 py-1 rounded-lg text-[10px] font-black border border-red-100 shadow-sm">
+              <ArrowUp className="w-3 h-3" /> +5.2%
+            </span>
+            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">vs LY</span>
+          </div>
+        </div>
+
+        {/* KPI Card — Financial Health Score */}
+        <div className="bg-white rounded-2xl shadow-xl group hover:-translate-y-1 transition-all duration-500 min-h-[150px] flex flex-col p-5 gap-3">
+          <p className="text-gray-400 text-[11px] font-black uppercase tracking-[0.2em] leading-tight">Financial Health Score</p>
+          <div className="text-[clamp(1.8rem,2.2vw,2.6rem)] font-black text-gold-600 tracking-tight leading-none">{averageScore}</div>
+          <div className="flex flex-wrap items-center gap-2 mt-auto">
+            <span className="bg-gold-50 text-gold-700 px-2.5 py-1 rounded-lg text-[10px] font-black border border-gold-100">
+              {trendText} Zone
+            </span>
+            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Diagnostic</span>
+          </div>
+        </div>
       </div>
 
       {/* Analytics Section */}

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Heart, Plus, Trash2, Edit2, X, Calendar, Users, Cake, Stethoscope } from 'lucide-react';
+import { Heart, Plus, Trash2, Edit2, X, Calendar, Users, Cake, Stethoscope, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../firebase';
 import { formatDate } from '../lib/format';
@@ -43,6 +43,7 @@ export function HealthTracker() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedPriest, setSelectedPriest] = useState<PriestRecord | null>(null);
   const [filter, setFilter] = useState<'all' | 'birthdays' | 'checkups'>('all');
+  const [search, setSearch] = useState('');
 
   const [formData, setFormData] = useState({
     name: '',
@@ -178,6 +179,14 @@ export function HealthTracker() {
   } else if (filter === 'checkups') {
     filteredPriests = priestsNeedingCheckup;
   }
+  if (search.trim()) {
+    const q = search.toLowerCase();
+    filteredPriests = filteredPriests.filter(p =>
+      p.name.toLowerCase().includes(q) ||
+      p.position.toLowerCase().includes(q) ||
+      p.parish.toLowerCase().includes(q)
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 pt-6 pb-20 px-4 md:px-6">
@@ -265,21 +274,33 @@ export function HealthTracker() {
           </motion.div>
         </div>
 
-        {/* Filters */}
-        <div className="flex gap-2 mb-6">
-          {(['all', 'birthdays', 'checkups'] as const).map(cat => (
-            <button
-              key={cat}
-              onClick={() => setFilter(cat)}
-              className={`px-4 py-2 rounded-lg transition-all ${
-                filter === cat
-                  ? 'bg-rose-500 text-white'
-                  : 'bg-white text-slate-700 border border-slate-200 hover:border-slate-300'
-              }`}
-            >
-              {cat === 'all' ? '👥 All' : cat === 'birthdays' ? '🎂 Birthdays' : '⚕️ Check-ups'}
-            </button>
-          ))}
+        {/* Filters + Search */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-6">
+          <div className="flex gap-2">
+            {(['all', 'birthdays', 'checkups'] as const).map(cat => (
+              <button
+                key={cat}
+                onClick={() => setFilter(cat)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  filter === cat
+                    ? 'bg-rose-500 text-white'
+                    : 'bg-white text-slate-700 border border-slate-200 hover:border-slate-300'
+                }`}
+              >
+                {cat === 'all' ? '👥 All' : cat === 'birthdays' ? '🎂 Birthdays' : '⚕️ Check-ups'}
+              </button>
+            ))}
+          </div>
+          <div className="relative flex-1 sm:max-w-xs">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search by name, position, parish..."
+              className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-rose-400 focus:border-transparent"
+            />
+          </div>
         </div>
 
         {/* Form Modal */}
@@ -417,83 +438,90 @@ export function HealthTracker() {
           )}
         </AnimatePresence>
 
-        {/* Records List */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <AnimatePresence mode="popLayout">
-            {filteredPriests.length === 0 ? (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="col-span-full text-center py-12"
-              >
-                <Heart className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                <p className="text-slate-600">No records to display</p>
-              </motion.div>
-            ) : (
-              filteredPriests.map((priest, index) => (
-                <motion.div
-                  key={priest.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ delay: index * 0.05 }}
-                  onClick={() => setSelectedPriest(priest)}
-                  className={`bg-white rounded-lg border-l-4 p-6 cursor-pointer hover:shadow-md transition-all ${
-                    HEALTH_STATUS_COLORS[priest.healthStatus]
-                  }`}
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <h3 className="font-bold text-lg text-slate-900">{priest.name}</h3>
-                      <p className="text-sm text-slate-600">{priest.position} • {priest.parish}</p>
-                    </div>
-                    {canManageRecords && (
-                      <div className="flex gap-2 ml-4">
-                        <button
-                          onClick={e => {
-                            e.stopPropagation();
-                            handleEdit(priest);
-                          }}
-                          className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-                        >
-                          <Edit2 className="w-5 h-5 text-blue-600" />
-                        </button>
-                        <button
-                          onClick={e => {
-                            e.stopPropagation();
-                            handleDelete(priest.id);
-                          }}
-                          className="p-2 hover:bg-rose-100 rounded-lg transition-colors"
-                        >
-                          <Trash2 className="w-5 h-5 text-rose-600" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="space-y-2 text-sm text-slate-700">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold">Age:</span>
-                      {priest.age} years
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold">Last Check-up:</span>
-                      {formatDate(new Date(priest.lastCheckup))}
-                      {needsCheckup(priest.lastCheckup) && (
-                        <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded">Overdue</span>
+        {/* Records Table */}
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Name</th>
+                  <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Position</th>
+                  <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider hidden md:table-cell">Parish</th>
+                  <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider hidden sm:table-cell">Age</th>
+                  <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider hidden lg:table-cell">Last Check-up</th>
+                  <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
+                  {canManageRecords && (
+                    <th className="text-right px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Actions</th>
+                  )}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredPriests.length === 0 ? (
+                  <tr>
+                    <td colSpan={canManageRecords ? 7 : 6} className="text-center py-12">
+                      <Heart className="w-10 h-10 text-slate-200 mx-auto mb-3" />
+                      <p className="text-slate-400 text-sm">
+                        {search ? 'No results found for your search.' : 'No records to display.'}
+                      </p>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredPriests.map((priest) => (
+                    <tr
+                      key={priest.id}
+                      onClick={() => setSelectedPriest(priest)}
+                      className="hover:bg-slate-50 cursor-pointer transition-colors"
+                    >
+                      <td className="px-4 py-3">
+                        <p className="font-semibold text-slate-900">{priest.name}</p>
+                        <p className="text-xs text-slate-500 md:hidden">{priest.parish}</p>
+                      </td>
+                      <td className="px-4 py-3 text-slate-600">{priest.position || '—'}</td>
+                      <td className="px-4 py-3 text-slate-600 hidden md:table-cell">{priest.parish || '—'}</td>
+                      <td className="px-4 py-3 text-slate-600 hidden sm:table-cell">{priest.age} yrs</td>
+                      <td className="px-4 py-3 hidden lg:table-cell">
+                        <span className="text-slate-600">{formatDate(new Date(priest.lastCheckup))}</span>
+                        {needsCheckup(priest.lastCheckup) && (
+                          <span className="ml-2 text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-bold">Overdue</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-bold border ${HEALTH_STATUS_COLORS[priest.healthStatus]}`}>
+                          {HEALTH_STATUS_ICONS[priest.healthStatus]} {priest.healthStatus.replace('-', ' ')}
+                        </span>
+                      </td>
+                      {canManageRecords && (
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={e => { e.stopPropagation(); handleEdit(priest); }}
+                              className="p-1.5 hover:bg-blue-50 rounded-lg transition-colors"
+                            >
+                              <Edit2 className="w-4 h-4 text-blue-500" />
+                            </button>
+                            <button
+                              onClick={e => { e.stopPropagation(); handleDelete(priest.id); }}
+                              className="p-1.5 hover:bg-rose-50 rounded-lg transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4 text-rose-500" />
+                            </button>
+                          </div>
+                        </td>
                       )}
-                    </div>
-                    {priest.notes && (
-                      <div className="flex items-start gap-2">
-                        <span className="font-semibold flex-shrink-0">Notes:</span>
-                        <p className="line-clamp-2">{priest.notes}</p>
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-              ))
-            )}
-          </AnimatePresence>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+          {filteredPriests.length > 0 && (
+            <div className="px-4 py-3 border-t border-slate-100 bg-slate-50">
+              <p className="text-xs text-slate-400 font-medium">
+                Showing {filteredPriests.length} of {priests.length} record{priests.length !== 1 ? 's' : ''}
+                {search && ` matching "${search}"`}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Detail Modal */}
