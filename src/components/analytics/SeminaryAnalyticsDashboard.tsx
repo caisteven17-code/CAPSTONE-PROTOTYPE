@@ -522,6 +522,45 @@ export default function SeminaryAnalyticsDashboard({
         </div>
       </div>
 
+      <div className="bg-black text-white rounded-2xl shadow-sm border border-black p-6 overflow-hidden relative">
+        <div className="absolute top-6 right-6 opacity-10">
+          <HeartPulse size={120} />
+        </div>
+        <div className="relative z-10">
+          <div className="mb-6">
+            <h3 className="text-xl font-bold text-[#D4AF37] uppercase tracking-wide">Health Insights</h3>
+            <p className="text-sm text-white/70 mt-2">System summary</p>
+          </div>
+
+          <div className="bg-white/10 p-4 rounded-xl border border-white/10 mb-5">
+            <p className="text-sm leading-relaxed font-semibold">
+              The overall financial health is <span className="text-[#D4AF37] font-black">{trendText}</span>.
+              Seminary liquidity and reserve levels are being monitored. Efficiency ratios remain within acceptable benchmarks.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="w-6 h-6 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 flex-shrink-0">
+                <TrendingUp size={14} />
+              </div>
+              <p className="text-xs text-white/80">Liquidity has improved by 5% since the last quarter.</p>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="w-6 h-6 rounded-full bg-orange-500/20 flex items-center justify-center text-orange-400 flex-shrink-0">
+                <AlertTriangle size={14} />
+              </div>
+              <p className="text-xs text-white/80">Sustainability is affected by subsidy dependency and formation operating costs.</p>
+            </div>
+          </div>
+
+          <button className="w-full mt-5 bg-[#D4AF37] hover:bg-[#c9a633] text-black font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2">
+            <Cpu size={18} />
+            Run Full Diagnostic
+          </button>
+        </div>
+      </div>
+
     </div>
     );
   };

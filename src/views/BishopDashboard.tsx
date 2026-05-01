@@ -1816,12 +1816,14 @@ export function BishopDashboard({
                     <div className="w-6 h-6 rounded-full bg-orange-500/20 flex items-center justify-center text-orange-400 flex-shrink-0">
                       <AlertTriangle size={14} />
                     </div>
-                    <p className="text-xs text-white/80">Sustainability score is impacted by rising maintenance costs in older parishes.</p>
+                    <p className="text-xs text-white/80">
+                      Sustainability score is impacted by rising maintenance costs in older {entityType === 'Diocesan Schools' ? 'school facilities' : 'parishes'}.
+                    </p>
                   </div>
                 </div>
                 <button 
                   onClick={() => handleDiagnosticRequest('Jan')}
-                  className="w-full mt-4 bg-gold-500 hover:bg-gold-600 text-church-green font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2"
+                  className="w-full mt-4 bg-gold-500 hover:bg-gold-600 text-black font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2"
                 >
                   <BrainCircuit size={18} />
                   Run Full Diagnostic
