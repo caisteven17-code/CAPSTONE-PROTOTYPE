@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import React, { useState } from 'react';
-import { Calendar, ChevronDown, Check, User, Database } from 'lucide-react';
+import { Calendar, ChevronDown, Check, User, Database, LogOut } from 'lucide-react';
 
 import { Role, Timeframe } from '../../App';
 
@@ -168,6 +168,16 @@ export function TopNav({
                       Data Management
                     </button>
                   )}
+                  <button
+                    onClick={() => {
+                      setIsAccountOpen(false);
+                      onLogout?.();
+                    }}
+                    className="w-full px-4 py-2.5 text-left text-sm font-bold text-rose-600 hover:bg-rose-50 flex items-center gap-3 transition-colors"
+                  >
+                    <LogOut className="w-4 h-4 text-rose-500" />
+                    Sign Out
+                  </button>
                 </div>
               )}
             </div>
@@ -264,6 +274,16 @@ export function TopNav({
                   >
                     <User className="w-4 h-4 text-gold-500" />
                     Profile
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsAccountOpen(false);
+                      onLogout?.();
+                    }}
+                    className="w-full px-4 py-2.5 text-left text-xs font-bold text-rose-300 hover:bg-rose-500/10 hover:text-rose-200 flex items-center gap-3 transition-colors"
+                  >
+                    <LogOut className="w-4 h-4 text-rose-400" />
+                    Sign Out
                   </button>
                 </div>
               )}

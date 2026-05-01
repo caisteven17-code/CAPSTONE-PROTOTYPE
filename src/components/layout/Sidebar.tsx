@@ -18,8 +18,7 @@ import {
   ScrollText,
   Users,
   UserCog,
-  Shield,
-  LogOut
+  Shield
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { APP_CONFIG } from '../../constants';
@@ -44,7 +43,6 @@ const TIMEFRAME_LABELS: Record<Timeframe, string> = {
 export function Sidebar({
   activeTab = '',
   onNavigate,
-  onLogout,
   role,
   timeframe = '6m',
   onTimeframeChange
@@ -527,18 +525,7 @@ export function Sidebar({
         )}
       </nav>
 
-      {/* Bottom Section — Sign Out only */}
-      <div className="p-4 border-t border-white/5">
-        {onLogout && (
-          <button
-            onClick={onLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group text-rose-400/70 hover:bg-rose-500/10 hover:text-rose-400"
-          >
-            <LogOut className="w-4 h-4 text-rose-400/40 group-hover:text-rose-400 transition-colors" />
-            <span className="text-xs font-bold tracking-wide">Sign Out</span>
-          </button>
-        )}
-      </div>
+      <div className="p-4 border-t border-white/5" />
     </aside>
   );
 }
