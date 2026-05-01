@@ -239,6 +239,7 @@ const AdvancedForecastChart = ({
   forecastKey, 
   yAxisLabel, 
   title,
+  entityType = 'Parishes',
   metrics = {
     mae: 35.22,
     rmse: 42.02,
@@ -253,10 +254,22 @@ const AdvancedForecastChart = ({
   forecastKey: string,
   yAxisLabel: string,
   title: string,
+  entityType?: string,
   metrics?: any
 }) => {
   const [showInterpretation, setShowInterpretation] = useState(false);
   const isCollections = actualKey === 'collections';
+  const subjectLabel = entityType === 'Diocesan Schools' ? 'school' : entityType === 'Seminaries' ? 'seminary' : 'parish';
+  const collectionsEventContext = entityType === 'Diocesan Schools'
+    ? 'enrollment periods, tuition schedules, and school activities'
+    : entityType === 'Seminaries'
+      ? 'formation schedules, subsidy releases, and seminary activities'
+      : 'Holy Week, when church attendance and giving are at their highest';
+  const disbursementEventContext = entityType === 'Diocesan Schools'
+    ? 'school operations, maintenance cycles, enrollment activities, and year-end obligations'
+    : entityType === 'Seminaries'
+      ? 'formation programs, maintenance cycles, and year-end obligations'
+      : 'Christmas programs, year-end bonuses, and parish events';
   const pastEnd = 'Aug';
   const presentEnd = 'Oct';
   const futureEnd = 'Dec';
@@ -285,6 +298,9 @@ const AdvancedForecastChart = ({
     const pct = (v: number) => `${v > 0 ? '+' : ''}${v.toFixed(1)}%`;
     return { lastActualVal, prevActualVal, lastMonthChange, nextMonthName, nextMonthVal, nextMonthChange, lastForecastName, lastForecastVal, peakMonth, avgActual, decAboveAvg, fmt, pct };
   }, [data, actualKey, forecastKey, presentEnd]);
+  const interpretationText = isCollections
+    ? `Looking at the graph, the ${subjectLabel} started the year collecting around ${insights.fmt(insights.prevActualVal > 0 ? insights.prevActualVal : insights.lastActualVal)} per month. Collections can jump around major activity periods such as ${collectionsEventContext}. After peak months, the numbers settle back to a normal range through mid-year. As of October, the ${subjectLabel} collected ${insights.fmt(insights.lastActualVal)}, and the model predicts this will continue to rise, reaching around ${insights.fmt(insights.nextMonthVal)} in ${insights.nextMonthName} and peaking at ${insights.fmt(insights.lastForecastVal)} in ${insights.lastForecastName}. The gold dashed line (the forecast) runs close to the actual green line throughout the year, which means the model's predictions are accurate and can be trusted for planning.`
+    : `Looking at the graph, the ${subjectLabel}'s spending follows a clear pattern throughout the year. Expenses were relatively moderate in the early months but can spike during major activity periods. Spending then stabilized through mid-year. As of October, disbursements reached ${insights.fmt(insights.lastActualVal)}, and the model projects costs will rise to ${insights.fmt(insights.nextMonthVal)} in ${insights.nextMonthName} and peak at ${insights.fmt(insights.lastForecastVal)} in ${insights.lastForecastName}, driven by ${disbursementEventContext}. The gold dashed line (the forecast) closely tracks actual spending, so these projections are reliable enough to use for budget planning.`;
 
   // Process data to ensure historical line stops at present, and forecast starts at present
   const processedData = useMemo(() => {
@@ -414,9 +430,7 @@ const AdvancedForecastChart = ({
         {showInterpretation && (
           <div className="px-4 py-4 bg-white">
             <p className="text-xs text-gray-600 leading-relaxed">
-              {isCollections
-                ? `Looking at the graph, the parish started the year collecting around ${insights.fmt(insights.prevActualVal > 0 ? insights.prevActualVal : insights.lastActualVal)} per month. Collections jumped significantly in April — this is expected every year because of Holy Week, when church attendance and giving are at their highest. After April, the numbers settled back to a normal range through mid-year. As of October, the parish collected ${insights.fmt(insights.lastActualVal)}, and the model predicts this will continue to rise — reaching around ${insights.fmt(insights.nextMonthVal)} in ${insights.nextMonthName} and peaking at ${insights.fmt(insights.lastForecastVal)} in ${insights.lastForecastName} due to the Christmas season. The gold dashed line (the forecast) runs close to the actual green line throughout the year, which means the model's predictions are accurate and can be trusted for planning.`
-                : `Looking at the graph, the parish's spending follows a clear pattern throughout the year. Expenses were relatively moderate in the early months but spiked in April due to Holy Week activities and programs. Spending then stabilized through mid-year. As of October, disbursements reached ${insights.fmt(insights.lastActualVal)}, and the model projects costs will rise to ${insights.fmt(insights.nextMonthVal)} in ${insights.nextMonthName} and peak at ${insights.fmt(insights.lastForecastVal)} in ${insights.lastForecastName} — the highest point of the year, driven by Christmas programs, year-end bonuses, and parish events. The gold dashed line (the forecast) closely tracks the actual spending line, which means the projections are reliable enough to use for budget planning.`}
+              {interpretationText}
             </p>
           </div>
         )}
@@ -3049,6 +3063,7 @@ export function BishopDashboard({
                   forecastKey="forecast"
                   yAxisLabel="Amount (PHP)"
                   title="MONTHLY COLLECTIONS"
+                  entityType={entityType}
                   metrics={{ mae: 35.22, rmse: 42.02, mape: 20.88, mase: 0.380, wape: 19.72, mpe: 4.46 }}
                 />
               ) : (
@@ -3058,6 +3073,7 @@ export function BishopDashboard({
                   forecastKey="forecast"
                   yAxisLabel="Amount (PHP)"
                   title="MONTHLY DISBURSEMENTS"
+                  entityType={entityType}
                   metrics={{ mae: 28.45, rmse: 34.12, mape: 15.67, mase: 0.412, wape: 14.89, mpe: 3.21 }}
                 />
               )}
@@ -3519,14 +3535,14 @@ export function BishopDashboard({
                       <>
                         <div className="flex justify-between items-center border-b border-gray-100 pb-6">
                           <div>
-                            <p className="font-bold text-church-black text-lg">St. Joseph Parish</p>
+                            <p className="font-bold text-church-black text-lg">{entityType === 'Diocesan Schools' ? 'Liceo de San Pablo' : 'St. Joseph Parish'}</p>
                             <p className="text-xs font-bold text-rose-600 tracking-wider mt-1 uppercase">HIGH RISK: UTILITIES & SALARIES</p>
                           </div>
                           <span className="font-bold text-rose-600 text-xl">82% Probability</span>
                         </div>
                         <div className="flex justify-between items-center">
                           <div>
-                            <p className="font-bold text-church-black text-lg">San Roque Parish</p>
+                            <p className="font-bold text-church-black text-lg">{entityType === 'Diocesan Schools' ? 'San Isidro Catholic School' : 'San Roque Parish'}</p>
                             <p className="text-xs font-bold text-amber-500 tracking-wider mt-1 uppercase">MEDIUM RISK: UTILITY APPEARS</p>
                           </div>
                           <span className="font-bold text-amber-500 text-xl">45% Probability</span>
@@ -3549,7 +3565,9 @@ export function BishopDashboard({
                         const nextLetter = currentLetter === 'A' ? 'A' : String.fromCharCode(currentLetter.charCodeAt(0) - 1);
                         const displayName = entityFilter !== 'All Entities'
                           ? entityFilter.replace(/ Parish$/, '')
-                          : 'San Roque';
+                          : entityType === 'Diocesan Schools'
+                            ? 'San Isidro Catholic School'
+                            : 'San Roque';
                         return (
                           <div className="flex justify-between items-center border-b border-gray-800 pb-6">
                             <div className="flex items-center gap-4">
