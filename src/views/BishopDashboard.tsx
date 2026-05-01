@@ -2528,7 +2528,7 @@ export function BishopDashboard({
           </Card>
 
           {/* Row 3: Top Tier */}
-          {entityType !== 'Parishes' && (
+          {entityType !== 'Parishes' && entityType !== 'Diocesan Schools' && (
             <Card className="border-none shadow-sm flex flex-col h-[520px]">
               <CardHeader className="pb-4 pt-6 px-6 border-b border-gray-50">
                 <div className="flex items-center justify-between">
@@ -3500,7 +3500,7 @@ export function BishopDashboard({
               </div>
 
               {/* Row 3: Risk & Rank Predictions */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className={`grid grid-cols-1 gap-6 ${entityType === 'Diocesan Schools' ? '' : 'lg:grid-cols-2'}`}>
                 <Card className="border-none shadow-sm">
                   <CardHeader>
                     <p className="text-[10px] font-bold tracking-widest uppercase text-gold-500">RISK PREDICTION</p>
@@ -3536,35 +3536,37 @@ export function BishopDashboard({
                   </CardContent>
                 </Card>
 
-                <Card className="bg-[#1A1A1A] text-white border-none shadow-sm">
-                  <CardHeader>
-                    <p className="text-[10px] font-bold tracking-widest uppercase text-gold-500">RANK PREDICTION</p>
-                    <h3 className="text-2xl font-bold text-white">Next Year Class Movement</h3>
-                  </CardHeader>
-                  <CardContent className="space-y-6 mt-6">
-                    {(() => {
-                      const entity = filteredEntities.length > 0 ? filteredEntities[0] : null;
-                      const currentLetter = entity ? entity.class.replace('Class ', '') : 'B';
-                      const nextLetter = currentLetter === 'A' ? 'A' : String.fromCharCode(currentLetter.charCodeAt(0) - 1);
-                      const displayName = entityFilter !== 'All Entities'
-                        ? entityFilter.replace(/ Parish$/, '')
-                        : 'San Roque';
-                      return (
-                        <div className="flex justify-between items-center border-b border-gray-800 pb-6">
-                          <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-full bg-gold-900/50 border border-gold-500/30 text-gold-500 flex items-center justify-center font-bold">{currentLetter}</div>
-                            <ArrowUpRight className="w-4 h-4 text-gray-500" />
-                            <div className="w-10 h-10 rounded-full bg-gold-500 text-white flex items-center justify-center font-bold">{nextLetter}</div>
+                {entityType !== 'Diocesan Schools' && (
+                  <Card className="bg-[#1A1A1A] text-white border-none shadow-sm">
+                    <CardHeader>
+                      <p className="text-[10px] font-bold tracking-widest uppercase text-gold-500">RANK PREDICTION</p>
+                      <h3 className="text-2xl font-bold text-white">Next Year Class Movement</h3>
+                    </CardHeader>
+                    <CardContent className="space-y-6 mt-6">
+                      {(() => {
+                        const entity = filteredEntities.length > 0 ? filteredEntities[0] : null;
+                        const currentLetter = entity ? entity.class.replace('Class ', '') : 'B';
+                        const nextLetter = currentLetter === 'A' ? 'A' : String.fromCharCode(currentLetter.charCodeAt(0) - 1);
+                        const displayName = entityFilter !== 'All Entities'
+                          ? entityFilter.replace(/ Parish$/, '')
+                          : 'San Roque';
+                        return (
+                          <div className="flex justify-between items-center border-b border-gray-800 pb-6">
+                            <div className="flex items-center gap-4">
+                              <div className="w-10 h-10 rounded-full bg-gold-900/50 border border-gold-500/30 text-gold-500 flex items-center justify-center font-bold">{currentLetter}</div>
+                              <ArrowUpRight className="w-4 h-4 text-gray-500" />
+                              <div className="w-10 h-10 rounded-full bg-gold-500 text-white flex items-center justify-center font-bold">{nextLetter}</div>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-bold text-white text-lg">{displayName}</p>
+                              <p className="text-[10px] font-bold text-emerald-400 tracking-wider mt-1 uppercase">92% CONFIDENCE</p>
+                            </div>
                           </div>
-                          <div className="text-right">
-                            <p className="font-bold text-white text-lg">{displayName}</p>
-                            <p className="text-[10px] font-bold text-emerald-400 tracking-wider mt-1 uppercase">92% CONFIDENCE</p>
-                          </div>
-                        </div>
-                      );
-                    })()}
-                  </CardContent>
-                </Card>
+                        );
+                      })()}
+                    </CardContent>
+                  </Card>
+                )}
               </div>
             </>
           )}
