@@ -4,7 +4,7 @@ import React, { useState, useMemo } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   LineChart, Line, AreaChart, Area, ComposedChart,
-  ReferenceArea, ReferenceLine
+  ReferenceArea, ReferenceLine, Cell
 } from 'recharts';
 import {
   TrendingUp, TrendingDown, DollarSign, Users, AlertTriangle,
@@ -125,6 +125,9 @@ const KPICard = ({ title, value, priorValue, icon: Icon, data }: any) => {
 // ============================================================================
 
 const SEM_MONTHS = ['Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May'];
+const SEM_CMP_YEARS = ['2024', '2025', '2026'] as const;
+type SemCmpYear = typeof SEM_CMP_YEARS[number];
+const SEM_CMP_YEAR_FACTOR: Record<SemCmpYear, number> = { '2024': 0.91, '2025': 1, '2026': 1.09 };
 
 const SeminaryForecastChart = ({
   data,
@@ -285,6 +288,11 @@ export default function SeminaryAnalyticsDashboard({
   const currentTab = onTabChange ? activeTab : localTab;
   const setActiveTab = onTabChange || setLocalTab;
   const [forecastTab, setForecastTab] = useState<'collections' | 'disbursements'>('collections');
+  const [periodMetric, setPeriodMetric] = useState<'collections' | 'disbursements'>('collections');
+  const [periodMonth1, setPeriodMonth1] = useState('Jan');
+  const [periodYear1, setPeriodYear1] = useState<SemCmpYear>('2025');
+  const [periodMonth2, setPeriodMonth2] = useState('Jan');
+  const [periodYear2, setPeriodYear2] = useState<SemCmpYear>('2026');
 
   const seminaryForecastData = useMemo(() => seminaryMockData.map(d => ({
     month: d.month,
@@ -366,6 +374,30 @@ export default function SeminaryAnalyticsDashboard({
     { name: 'Infrastructure', value: latestMonth.construction + latestMonth.repairs + latestMonth.purchases },
     { name: 'Operations', value: latestMonth.utilities + latestMonth.lpg + latestMonth.supplies + latestMonth.bankCharges + latestMonth.othersExpenses },
   ];
+
+  const seminaryPeriodComparison = useMemo(() => {
+    const getValue = (month: string, year: SemCmpYear) => {
+      const row = seminaryMockData.find((item) => item.month === month) || seminaryMockData[0];
+      const baseValue = periodMetric === 'collections' ? row.totalIncome : row.totalExpenses;
+      return Math.round(baseValue * SEM_CMP_YEAR_FACTOR[year]);
+    };
+
+    const value1 = getValue(periodMonth1, periodYear1);
+    const value2 = getValue(periodMonth2, periodYear2);
+    const delta = value2 - value1;
+    const pct = value1 > 0 ? (delta / value1) * 100 : 0;
+
+    return {
+      p1: { label: `${periodMonth1} ${periodYear1}`, value: value1 },
+      p2: { label: `${periodMonth2} ${periodYear2}`, value: value2 },
+      delta,
+      pct,
+      barData: [
+        { period: `${periodMonth1} ${periodYear1}`, value: value1 },
+        { period: `${periodMonth2} ${periodYear2}`, value: value2 },
+      ],
+    };
+  }, [periodMetric, periodMonth1, periodYear1, periodMonth2, periodYear2]);
 
   // ==========================================================================
   // RENDER TABS
@@ -537,8 +569,8 @@ export default function SeminaryAnalyticsDashboard({
 
     // Decline monitor data per seminary
     const declineMonitorData = [
-      { name: "St. Peter's College Seminary", vicariate: 'San Pablo', class: 'Class A', w1: 720000, w2: 695000, w3: 668000, w4: 640000, trend: -11 },
-      { name: 'San Pablo Theological Formation Center', vicariate: 'San Pablo', class: 'Class B', w1: 540000, w2: 558000, w3: 574000, w4: 591000, trend: 9 },
+      { name: "St. Peter's College Seminary", w1: 720000, w2: 695000, w3: 668000, w4: 640000, trend: -11 },
+      { name: 'San Pablo Theological Formation Center', w1: 540000, w2: 558000, w3: 574000, w4: 591000, trend: 9 },
     ];
 
     return (
@@ -574,6 +606,113 @@ export default function SeminaryAnalyticsDashboard({
           <div className="text-center mt-2 text-[11px] font-bold text-gray-400 uppercase tracking-[0.4em]">Seminary</div>
         </div>
       )}
+
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div>
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] mb-1">Financial Analytics</p>
+            <h3 className="text-2xl font-extrabold text-gray-900 uppercase tracking-tight">Period Comparison</h3>
+            <p className="text-sm text-gray-400 mt-1">Compare seminary {periodMetric === 'collections' ? 'receipts' : 'disbursements'} across two selected periods.</p>
+          </div>
+          <div className="flex bg-gray-100 p-1 rounded-xl shrink-0">
+            {(['collections', 'disbursements'] as const).map((metric) => (
+              <button
+                key={metric}
+                onClick={() => setPeriodMetric(metric)}
+                className={`px-4 py-2 text-[10px] font-black rounded-lg transition-all uppercase tracking-widest ${
+                  periodMetric === metric ? 'bg-black text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                {metric}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 p-4 bg-gray-50 rounded-2xl">
+          <div>
+            <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider block mb-2">Period 1 - Month</label>
+            <select
+              value={periodMonth1}
+              onChange={(event) => setPeriodMonth1(event.target.value)}
+              className="w-full bg-white border border-gray-200 text-[11px] font-bold text-church-green rounded-xl px-3 py-2.5 outline-none cursor-pointer focus:ring-2 focus:ring-gold-500/20"
+            >
+              {SEM_MONTHS.map((month) => <option key={month} value={month}>{month}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider block mb-2">Period 1 - Year</label>
+            <select
+              value={periodYear1}
+              onChange={(event) => setPeriodYear1(event.target.value as SemCmpYear)}
+              className="w-full bg-white border border-gray-200 text-[11px] font-bold text-church-green rounded-xl px-3 py-2.5 outline-none cursor-pointer focus:ring-2 focus:ring-gold-500/20"
+            >
+              {SEM_CMP_YEARS.map((year) => <option key={year} value={year}>{year}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider block mb-2">Period 2 - Month</label>
+            <select
+              value={periodMonth2}
+              onChange={(event) => setPeriodMonth2(event.target.value)}
+              className="w-full bg-white border border-gray-200 text-[11px] font-bold text-church-green rounded-xl px-3 py-2.5 outline-none cursor-pointer focus:ring-2 focus:ring-gold-500/20"
+            >
+              {SEM_MONTHS.map((month) => <option key={month} value={month}>{month}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-[10px] font-black text-gray-500 uppercase tracking-wider block mb-2">Period 2 - Year</label>
+            <select
+              value={periodYear2}
+              onChange={(event) => setPeriodYear2(event.target.value as SemCmpYear)}
+              className="w-full bg-white border border-gray-200 text-[11px] font-bold text-church-green rounded-xl px-3 py-2.5 outline-none cursor-pointer focus:ring-2 focus:ring-gold-500/20"
+            >
+              {SEM_CMP_YEARS.map((year) => <option key={year} value={year}>{year}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div className="h-[280px] mb-6">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={seminaryPeriodComparison.barData} margin={{ top: 20, right: 30, left: 20, bottom: 10 }} barCategoryGap="40%">
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
+              <XAxis dataKey="period" tick={{ fill: '#6B7280', fontSize: 11, fontWeight: 700 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: '#9CA3AF', fontSize: 10 }} tickFormatter={(value) => `${(value / 1_000_000).toFixed(1)}M`} axisLine={false} tickLine={false} width={55} />
+              <Tooltip formatter={(value: number) => [formatCurrency(value), periodMetric === 'collections' ? 'Receipts' : 'Disbursements']} contentStyle={{ borderRadius: 16, border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', fontSize: 12 }} />
+              <Bar dataKey="value" radius={[10, 10, 0, 0]} maxBarSize={90}>
+                {seminaryPeriodComparison.barData.map((_, index) => (
+                  <Cell key={index} fill={index === 0 ? '#1a472a' : '#D4AF37'} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="p-5 bg-gray-50 rounded-2xl border border-gray-100">
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">
+              {seminaryPeriodComparison.p1.label} - {periodMetric === 'collections' ? 'Receipts' : 'Disbursements'}
+            </p>
+            <p className="text-2xl font-black text-church-green">{formatCurrency(seminaryPeriodComparison.p1.value)}</p>
+          </div>
+          <div className="p-5 bg-gray-50 rounded-2xl border border-gray-100">
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">
+              {seminaryPeriodComparison.p2.label} - {periodMetric === 'collections' ? 'Receipts' : 'Disbursements'}
+            </p>
+            <p className="text-2xl font-black text-church-green">{formatCurrency(seminaryPeriodComparison.p2.value)}</p>
+          </div>
+          <div className={`p-5 rounded-2xl border ${seminaryPeriodComparison.delta >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-rose-50 border-rose-100'}`}>
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Change / Growth</p>
+            <p className={`text-2xl font-black ${seminaryPeriodComparison.delta >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+              {seminaryPeriodComparison.delta >= 0 ? '+' : ''}{formatCurrency(seminaryPeriodComparison.delta)}
+            </p>
+            <p className={`text-sm font-bold mt-1 flex items-center gap-1 ${seminaryPeriodComparison.delta >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+              {seminaryPeriodComparison.delta >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+              {seminaryPeriodComparison.delta >= 0 ? '+' : ''}{seminaryPeriodComparison.pct.toFixed(1)}% vs Period 1
+            </p>
+          </div>
+        </div>
+      </div>
 
       {/* Collections Breakdown by Category */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
@@ -638,8 +777,6 @@ export default function SeminaryAnalyticsDashboard({
               <thead>
                 <tr className="border-b border-gray-100 text-[10px] font-black uppercase tracking-widest text-gray-400">
                   <th className="py-3 pr-4">Name</th>
-                  <th className="py-3 pr-4">Vicariate</th>
-                  <th className="py-3 pr-4">Class</th>
                   <th className="py-3 pr-4">Month 1</th>
                   <th className="py-3 pr-4">Month 2</th>
                   <th className="py-3 pr-4">Month 3</th>
@@ -651,8 +788,6 @@ export default function SeminaryAnalyticsDashboard({
                 {declineMonitorData.map((row, i) => (
                   <tr key={i} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
                     <td className="py-4 pr-4 text-church-green font-medium">{row.name}</td>
-                    <td className="py-4 pr-4 text-church-green/80">{row.vicariate}</td>
-                    <td className="py-4 pr-4 text-church-green/80">{row.class}</td>
                     <td className="py-4 pr-4 font-medium text-church-green">{formatCurrency(row.w1)}</td>
                     <td className="py-4 pr-4 font-medium text-church-green">{formatCurrency(row.w2)}</td>
                     <td className="py-4 pr-4 font-medium text-church-green">{formatCurrency(row.w3)}</td>
