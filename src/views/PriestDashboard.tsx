@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { TrendingUp, AlertTriangle, ArrowUpDown, Search, BrainCircuit, HeartPulse, Info, X, TrendingDown, Filter, Download, ChevronRight, ArrowUpRight, ArrowDownRight, Menu, Settings, Bell, User, LogOut, HelpCircle, FileText, Activity, Target, Zap, Clock, CalendarDays, Sparkles, ArrowRight, ArrowUp, Cpu, Award } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer,
-  Line, LineChart, AreaChart, Area, ComposedChart, PieChart, Pie, Cell, Tooltip, Legend,
+  Line, LineChart, AreaChart, Area, ComposedChart, PieChart, Pie, Cell, Tooltip, Legend, ScatterChart, Scatter,
   ReferenceArea, ReferenceLine
 } from 'recharts';
 import { dataService } from '../services/dataService';
@@ -832,6 +832,81 @@ export function PriestDashboard({
     const bottomFive = [...diocesanPriestData].sort((a, b) => a.collectionChange - b.collectionChange).slice(0, 5);
     const reassignList = diocesanPriestData.filter(p => p.status === 'reassign' || p.monthsAssigned > 48);
     return { total, avgCollection, topPerformer, reassignCount, overBudget, topFive, bottomFive, reassignList };
+  }, [diocesanPriestData]);
+
+  const priestHealthScoreAnalysis = useMemo(() => {
+    const bands = [
+      { id: 'excellent', label: 'Excellent', min: 85, color: 'bg-emerald-500', fill: '#10B981', textColor: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-100' },
+      { id: 'healthy', label: 'Healthy', min: 70, color: 'bg-blue-500', fill: '#3B82F6', textColor: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-100' },
+      { id: 'support', label: 'Needs Support', min: 55, color: 'bg-amber-500', fill: '#F59E0B', textColor: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-100' },
+      { id: 'critical', label: 'Critical', min: 0, color: 'bg-red-500', fill: '#EF4444', textColor: 'text-red-700', bg: 'bg-red-50', border: 'border-red-100' },
+    ];
+
+    const scored = diocesanPriestData.map((priest) => {
+      const clamp = (value: number) => Math.max(0, Math.min(100, value));
+      const isOverBudget = priest.avgDisbursements > priest.avgCollections;
+      const margin = priest.avgCollections - priest.avgDisbursements;
+      const marginRate = priest.avgCollections > 0 ? (margin / priest.avgCollections) * 100 : 0;
+      const collectionScore = clamp((priest.avgCollections / 1_200_000) * 100);
+      const trendScore = clamp(70 + priest.collectionChange);
+      const marginScore = clamp(60 + marginRate);
+      const tenureScore = priest.monthsAssigned > 60 ? 70 : priest.monthsAssigned > 48 ? 78 : 88;
+      const healthScore = Math.round(
+        collectionScore * 0.3 +
+        priest.disciplineScore * 0.3 +
+        trendScore * 0.2 +
+        marginScore * 0.15 +
+        tenureScore * 0.05
+      );
+      const band = healthScore >= 85 ? 'excellent' : healthScore >= 70 ? 'healthy' : healthScore >= 55 ? 'support' : 'critical';
+
+      return { ...priest, isOverBudget, margin, marginRate, collectionScore, trendScore, marginScore, tenureScore, healthScore, band };
+    });
+
+    const total = Math.max(scored.length, 1);
+    const distribution = bands.map((band) => {
+      const priests = scored.filter((priest) => priest.band === band.id);
+      return {
+        ...band,
+        scoreRange: band.id === 'excellent' ? '85-100' : band.id === 'healthy' ? '70-84' : band.id === 'support' ? '55-69' : '0-54',
+        count: priests.length,
+        percentage: Math.round((priests.length / total) * 100),
+      };
+    });
+
+    const vicariateRows = Object.values(scored.reduce((groups, priest) => {
+      const current = groups[priest.vicariate] || {
+        vicariate: priest.vicariate,
+        count: 0,
+        totalScore: 0,
+        supportCount: 0,
+      };
+      current.count += 1;
+      current.totalScore += priest.healthScore;
+      current.supportCount += priest.band === 'support' || priest.band === 'critical' ? 1 : 0;
+      groups[priest.vicariate] = current;
+      return groups;
+    }, {} as Record<string, { vicariate: string; count: number; totalScore: number; supportCount: number }>))
+      .map((row) => ({
+        ...row,
+        name: stripVicariatePrefix(row.vicariate),
+        avgScore: Math.round(row.totalScore / row.count),
+      }))
+      .sort((a, b) => a.avgScore - b.avgScore)
+      .slice(0, 5);
+
+    const averageScore = Math.round(scored.reduce((sum, priest) => sum + priest.healthScore, 0) / total);
+    const needsSupport = scored.filter((priest) => priest.band === 'support' || priest.band === 'critical').length;
+    const lowestPriests = [...scored].sort((a, b) => a.healthScore - b.healthScore).slice(0, 3);
+    const growthHealthRows = scored.map((priest) => ({
+      name: priest.name,
+      entity: priest.entity,
+      growthRate: priest.collectionChange,
+      healthScore: priest.healthScore,
+      fill: bands.find((band) => band.id === priest.band)?.fill || '#94A3B8',
+    }));
+
+    return { distribution, vicariateRows, averageScore, needsSupport, lowestPriests, growthHealthRows };
   }, [diocesanPriestData]);
 
   const seasonalExpenseSpikes = useMemo(() => [
@@ -1778,113 +1853,131 @@ export function PriestDashboard({
 
           {isPriestDashboardContext && (
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
-              <div className="flex items-center justify-between mb-5">
-                <div className="space-y-3">
-                  <h3 className="text-lg font-bold text-church-green">Donation Trends by Priest Assignment</h3>
-                  <div className="inline-flex items-center bg-gray-100 rounded-lg p-1">
-                    <button
-                      type="button"
-                      onClick={() => setDonationTrendsMode('performance')}
-                      className={`px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wide transition-colors ${donationTrendsMode === 'performance' ? 'bg-white text-church-green shadow-sm' : 'text-gray-500 hover:text-church-green'}`}
-                    >
-                      Performance %
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setDonationTrendsMode('amount')}
-                      className={`px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wide transition-colors ${donationTrendsMode === 'amount' ? 'bg-white text-church-green shadow-sm' : 'text-gray-500 hover:text-church-green'}`}
-                    >
-                      Income Amount
-                    </button>
+              <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-6">
+                <div>
+                  <h3 className="text-lg font-bold text-church-green">Priest Performance Health Score</h3>
+                  <p className="text-xs text-gray-500 mt-1 max-w-3xl">Scores summarize financial performance, reporting discipline, collection trend, budget margin, and assignment tenure.</p>
+                </div>
+                <div className="grid grid-cols-2 gap-2 min-w-[260px]">
+                  <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400">Average Score</p>
+                    <p className="text-xl font-black text-emerald-600">{priestHealthScoreAnalysis.averageScore}/100</p>
+                  </div>
+                  <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400">Needs Support</p>
+                    <p className="text-xl font-black text-amber-600">{priestHealthScoreAnalysis.needsSupport}</p>
                   </div>
                 </div>
-                <select
-                  value={donationTrendsFilter}
-                  onChange={(e) => setDonationTrendsFilter(e.target.value as 'all' | 'actual' | 'potential')}
-                  className="bg-gray-100 border-none text-[10px] font-bold text-church-green rounded-lg px-3 py-2 outline-none cursor-pointer hover:bg-gray-200 transition-colors"
-                >
-                  <option value="all">ALL CATEGORIES</option>
-                  <option value="actual">ACTUAL DONATIONS</option>
-                  <option value="potential">PROJECTED POTENTIAL</option>
-                </select>
               </div>
-              <div className="h-[320px] flex items-center">
-                <div className="w-8 flex-shrink-0 flex items-center justify-center h-full">
-                  <span className="text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em] -rotate-90 whitespace-nowrap">{donationTrendsMode === 'performance' ? 'Performance (%)' : 'Amount (PHP)'}</span>
-                </div>
-                <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={donationTrendDisplayData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="priestDonationGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#D4AF37" stopOpacity={1} />
-                        <stop offset="100%" stopColor="#B5952F" stopOpacity={0.85} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
-                    <XAxis dataKey="name" axisLine={{ stroke: '#E5E7EB' }} tickLine={false} tick={<CustomizedTick fontSize={9} />} interval={0} height={78} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6B7280', fontSize: 10 }} tickFormatter={(value) => donationTrendsMode === 'performance' ? `${Number(value).toFixed(0)}%` : formatMillions(value)} width={50} />
-                    <Tooltip
-                      formatter={(value: number, name: string) => [
-                        donationTrendsMode === 'performance' ? `${value.toFixed(2)}%` : formatCurrency(value),
-                        name === 'barValue' || name === 'barPercentage'
-                          ? (donationTrendsMode === 'performance' ? 'Actual Share of Total Income' : 'Actual Donations')
-                          : (donationTrendsMode === 'performance' ? 'Potential Share of Total Income' : 'Projected Potential')
-                      ]}
-                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)', fontSize: '11px' }}
-                    />
-                    <Legend
-                      verticalAlign="top"
-                      align="right"
-                      height={36}
-                      iconType="circle"
-                      wrapperStyle={{ fontSize: '11px', fontWeight: 600 }}
-                      formatter={(value) =>
-                        value === 'barValue' || value === 'barPercentage'
-                          ? (donationTrendsMode === 'performance' ? 'Actual Share of Total Income' : 'Actual Donations')
-                          : (donationTrendsMode === 'performance' ? 'Potential Share of Total Income' : 'Projected Potential')
-                      }
-                    />
-                    {(donationTrendsFilter === 'all' || donationTrendsFilter === 'actual') && (
-                      <Bar
-                        dataKey={donationTrendsMode === 'performance' ? 'barPercentage' : 'barValue'}
-                        name={donationTrendsMode === 'performance' ? 'Actual Share of Total Income' : 'Actual Donations'}
-                        fill="url(#priestDonationGradient)"
-                        radius={[5, 5, 0, 0]}
-                        maxBarSize={38}
-                      />
-                    )}
-                    {(donationTrendsFilter === 'all' || donationTrendsFilter === 'potential') && (
-                      <Line
-                        type="monotone"
-                        dataKey={donationTrendsMode === 'performance' ? 'linePercentage' : 'lineValue'}
-                        name={donationTrendsMode === 'performance' ? 'Potential Share of Total Income' : 'Projected Potential'}
-                        stroke="#1a472a"
-                        strokeWidth={3}
-                        dot={{ r: 3, fill: '#1a472a', stroke: '#fff', strokeWidth: 1.5 }}
-                      />
-                    )}
-                  </ComposedChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="text-center mt-2 text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em]">Priest</div>
-            </div>
-          )}
 
-          {/* ── DIOCESAN: Overview Stats ── */}
-          {isPriestDashboardContext && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[
-                { label: 'Total Assigned Priests', value: diocesanStats.total, sub: 'across all entities', color: 'church-green' },
-                { label: 'Avg Monthly Collections', value: formatCurrency(diocesanStats.avgCollection), sub: 'per priest assignment', color: 'gold-600' },
-                { label: 'Flagged for Reassignment', value: diocesanStats.reassignCount, sub: 'performance or tenure basis', color: 'red-600' },
-                { label: 'Over-Spending Assignments', value: diocesanStats.overBudget, sub: 'disbursements exceed collections', color: 'orange-600' },
-              ].map(stat => (
-                <div key={stat.label} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-2">{stat.label}</p>
-                  <p className={`text-2xl font-black text-${stat.color}`}>{stat.value}</p>
-                  <p className="text-[10px] text-gray-400 font-semibold mt-1">{stat.sub}</p>
+              <div className="grid grid-cols-1 gap-6">
+                <div className="rounded-2xl border border-gray-100 bg-gray-50 p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Health Score Bands</p>
+                    <p className="text-[10px] font-bold text-gray-400">{diocesanStats.total} total</p>
+                  </div>
+                  <div className="h-[260px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={priestHealthScoreAnalysis.distribution} margin={{ top: 12, right: 16, left: 0, bottom: 8 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                        <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: '#374151', fontSize: 10, fontWeight: 700 }} />
+                        <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fill: '#6B7280', fontSize: 10 }} />
+                        <Tooltip
+                          formatter={(value: number) => [`${value} priest${value !== 1 ? 's' : ''}`, 'Count']}
+                          labelFormatter={(label) => `${label} health score band`}
+                          contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)', fontSize: '11px' }}
+                        />
+                        <Bar dataKey="count" radius={[8, 8, 0, 0]} barSize={44}>
+                          {priestHealthScoreAnalysis.distribution.map((entry) => (
+                            <Cell key={entry.id} fill={entry.fill} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    {priestHealthScoreAnalysis.distribution.map((band) => (
+                      <div key={band.id} className="flex items-center justify-between rounded-xl bg-white border border-gray-100 px-4 py-3">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className={`w-2.5 h-2.5 rounded-full ${band.color} flex-shrink-0`} />
+                          <span className="text-xs font-bold text-gray-700 truncate">{band.label} <span className="text-gray-400">({band.scoreRange})</span></span>
+                        </div>
+                        <span className="text-sm font-black text-gray-900">{band.count}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              ))}
+
+                <div className="rounded-2xl border border-gray-100 bg-gray-50 p-5">
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Collection Growth vs Health Score</p>
+                      <p className="text-xs text-gray-500 mt-1">Each point compares priest collection growth rate with the computed health score.</p>
+                    </div>
+                    <div className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-wide text-gray-500">
+                      <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500" /> Strong</span>
+                      <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-500" /> Support</span>
+                      <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-500" /> Critical</span>
+                    </div>
+                  </div>
+                  <div className="h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <ScatterChart margin={{ top: 12, right: 24, left: 0, bottom: 12 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                        <XAxis
+                          type="number"
+                          dataKey="growthRate"
+                          name="Collection growth"
+                          unit="%"
+                          domain={[-20, 25]}
+                          axisLine={false}
+                          tickLine={false}
+                          tick={{ fill: '#6B7280', fontSize: 10 }}
+                        />
+                        <YAxis
+                          type="number"
+                          dataKey="healthScore"
+                          name="Health score"
+                          unit="/100"
+                          domain={[0, 100]}
+                          axisLine={false}
+                          tickLine={false}
+                          tick={{ fill: '#6B7280', fontSize: 10 }}
+                        />
+                        <Tooltip
+                          cursor={{ strokeDasharray: '3 3' }}
+                          formatter={(value: number, name: string) => [
+                            name === 'Collection growth' ? `${value}%` : `${value}/100`,
+                            name,
+                          ]}
+                          labelFormatter={(_, payload) => payload?.[0]?.payload?.name || 'Priest'}
+                          contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)', fontSize: '11px' }}
+                        />
+                        <ReferenceLine x={0} stroke="#94A3B8" strokeDasharray="4 4" />
+                        <ReferenceLine y={70} stroke="#94A3B8" strokeDasharray="4 4" />
+                        <Scatter data={priestHealthScoreAnalysis.growthHealthRows} name="Priests">
+                          {priestHealthScoreAnalysis.growthHealthRows.map((entry) => (
+                            <Cell key={entry.name} fill={entry.fill} />
+                          ))}
+                        </Scatter>
+                      </ScatterChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+                    {[
+                      { label: 'High Growth / Healthy', value: priestHealthScoreAnalysis.growthHealthRows.filter((p) => p.growthRate >= 0 && p.healthScore >= 70).length, color: 'text-emerald-600' },
+                      { label: 'Declining / Healthy', value: priestHealthScoreAnalysis.growthHealthRows.filter((p) => p.growthRate < 0 && p.healthScore >= 70).length, color: 'text-blue-600' },
+                      { label: 'Growth / Needs Support', value: priestHealthScoreAnalysis.growthHealthRows.filter((p) => p.growthRate >= 0 && p.healthScore < 70).length, color: 'text-amber-600' },
+                      { label: 'Declining / Needs Support', value: priestHealthScoreAnalysis.growthHealthRows.filter((p) => p.growthRate < 0 && p.healthScore < 70).length, color: 'text-red-600' },
+                    ].map((item) => (
+                      <div key={item.label} className="rounded-xl bg-white border border-gray-100 px-4 py-3">
+                        <p className="text-[9px] font-black uppercase tracking-[0.16em] text-gray-400">{item.label}</p>
+                        <p className={`text-lg font-black mt-1 ${item.color}`}>{item.value}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
@@ -1957,7 +2050,7 @@ export function PriestDashboard({
               <table className="w-full text-left min-w-[700px]">
                 <thead>
                   <tr className="border-b border-gray-100">
-                    {['Priest', 'Assignment', 'Type', 'Tenure', 'Avg Collections', 'Avg Disbursements', 'Trend', 'Status'].map(h => (
+                    {['Priest', 'Assignment', 'Type', 'Avg Collections', 'Avg Disbursements', 'Trend', 'Status'].map(h => (
                       <th key={h} className="pb-3 text-[10px] font-black uppercase tracking-widest text-gray-400 pr-4">{h}</th>
                     ))}
                   </tr>
@@ -1975,7 +2068,6 @@ export function PriestDashboard({
                           {p.entityType}
                         </span>
                       </td>
-                      <td className="py-3 pr-4 text-xs text-gray-600">{p.monthsAssigned} mo.</td>
                       <td className="py-3 pr-4 text-xs font-bold text-gray-900">{formatCurrency(p.avgCollections)}</td>
                       <td className="py-3 pr-4 text-xs font-bold text-gray-700">{formatCurrency(p.avgDisbursements)}</td>
                       <td className="py-3 pr-4">

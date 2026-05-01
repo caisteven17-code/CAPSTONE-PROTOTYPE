@@ -26,6 +26,7 @@ import { getAccessRoleLabel, getAppRole, normalizeAccessRole } from '../lib/acce
 
 export function Settings({ onBack, onLogout, onNavigate, role = 'bishop', initialTab }: SettingsProps) {
   const [activeTab, setActiveTab] = useState(initialTab || ((role === 'bishop' || role === 'admin') ? 'user-management' : 'security'));
+  type InstitutionType = 'parish' | 'seminary' | 'school';
 
   React.useEffect(() => {
     if (initialTab) {
@@ -186,15 +187,70 @@ export function Settings({ onBack, onLogout, onNavigate, role = 'bishop', initia
   const [searchQuery, setSearchQuery] = useState('');
   
   const [formState, setFormState] = useState({
+    institutionType: '' as InstitutionType | '',
     entity: '',
     leader: '',
     email: '',
     role: INITIAL_ROLES[2].id
   });
+  const [showInstitutionSuggestions, setShowInstitutionSuggestions] = useState(false);
+
+  const institutionOptions: { id: InstitutionType; label: string }[] = [
+    { id: 'parish', label: 'Parish' },
+    { id: 'seminary', label: 'Seminary' },
+    { id: 'school', label: 'School' }
+  ];
+
+  const institutionNames = React.useMemo(() => {
+    const list = formState.institutionType === 'school'
+      ? [...schools, ...INITIAL_SCHOOLS]
+      : formState.institutionType === 'seminary'
+        ? [...seminaries, ...INITIAL_SEMINARIES]
+        : formState.institutionType === 'parish'
+          ? [...parishes, ...INITIAL_PARISHES]
+          : [];
+
+    return Array.from(new Set(list.map((item) => item.name))).sort();
+  }, [formState.institutionType, parishes, seminaries, schools]);
+
+  const institutionNameSuggestions = React.useMemo(() => {
+    const query = formState.entity.trim().toLowerCase();
+    const matches = query
+      ? institutionNames.filter((name) => name.toLowerCase().includes(query))
+      : institutionNames;
+
+    return matches.slice(0, 8);
+  }, [formState.entity, institutionNames]);
+
+  const institutionNameLabel = formState.institutionType === 'seminary'
+    ? 'Seminary Name'
+    : formState.institutionType === 'school'
+      ? 'School Name'
+      : 'Parish Name';
+
+  const institutionNamePlaceholder = formState.institutionType
+    ? `Type ${institutionNameLabel.toLowerCase()}`
+    : 'Select an institution type first';
+
+  const handleInstitutionTypeChange = (institutionType: InstitutionType) => {
+    const defaultRoleByType: Record<InstitutionType, string> = {
+      parish: 'parish_priest',
+      seminary: 'seminary_rector',
+      school: 'school_registrar'
+    };
+
+    setFormState({
+      ...formState,
+      institutionType,
+      entity: '',
+      role: defaultRoleByType[institutionType] || formState.role
+    });
+    setShowInstitutionSuggestions(false);
+  };
 
   const findSelectedEntity = (entityName: string, accessRoleId: string) => {
     const appRole = getAppRole(accessRoleId);
-    const entityType = appRole === 'school' ? 'school' : appRole === 'seminary' ? 'seminary' : appRole === 'bishop' || appRole === 'admin' ? 'diocese' : 'parish';
+    const entityType = formState.institutionType || (appRole === 'school' ? 'school' : appRole === 'seminary' ? 'seminary' : 'parish');
     const entityList = entityType === 'school'
       ? [...schools, ...INITIAL_SCHOOLS]
       : entityType === 'seminary'
@@ -211,7 +267,7 @@ export function Settings({ onBack, onLogout, onNavigate, role = 'bishop', initia
 
   const handleSaveAccount = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formState.entity || !formState.leader || !formState.email || !formState.role) return;
+    if (!formState.institutionType || !formState.entity || !formState.leader || !formState.email || !formState.role) return;
     
     try {
       const storedUsers = JSON.parse(localStorage.getItem('users') || '[]');
@@ -262,6 +318,7 @@ export function Settings({ onBack, onLogout, onNavigate, role = 'bishop', initia
   const handleEditClick = (account: any) => {
     setEditingAccountId(account.id);
     setFormState({
+      institutionType: (account.entityType === 'parish' || account.entityType === 'seminary' || account.entityType === 'school') ? account.entityType : '',
       entity: account.entity,
       leader: account.leader,
       email: account.email,
@@ -297,7 +354,8 @@ export function Settings({ onBack, onLogout, onNavigate, role = 'bishop', initia
   const closeModal = () => {
     setIsModalOpen(false);
     setEditingAccountId(null);
-    setFormState({ entity: '', leader: '', email: '', role: roles[2]?.id || 'parish_priest' });
+    setShowInstitutionSuggestions(false);
+    setFormState({ institutionType: '', entity: '', leader: '', email: '', role: roles[2]?.id || 'parish_priest' });
   };
 
   const filteredAccounts = accounts.filter(acc => 
@@ -372,25 +430,59 @@ export function Settings({ onBack, onLogout, onNavigate, role = 'bishop', initia
             <form onSubmit={handleSaveAccount} className="p-8 space-y-6">
               <div className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Entity Name</label>
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Institution Type</label>
                   <select 
                     required
-                    value={formState.entity}
-                    onChange={(e) => setFormState({...formState, entity: e.target.value})}
+                    value={formState.institutionType}
+                    onChange={(e) => handleInstitutionTypeChange(e.target.value as InstitutionType)}
                     className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-700 focus:outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] transition-all appearance-none bg-white"
                   >
-                    <option value="" disabled>Select an entity</option>
-                    {Array.from(new Set([
-                      ...parishes.map(p => p.name),
-                      ...INITIAL_PARISHES.map(p => p.name),
-                      ...seminaries.map(s => s.name),
-                      ...INITIAL_SEMINARIES.map(s => s.name),
-                      ...schools.map(s => s.name),
-                      ...INITIAL_SCHOOLS.map(s => s.name)
-                    ])).sort().map(name => (
-                      <option key={name} value={name}>{name}</option>
+                    <option value="" disabled>Select institution type</option>
+                    {institutionOptions.map((option) => (
+                      <option key={option.id} value={option.id}>{option.label}</option>
                     ))}
                   </select>
+                </div>
+                <div className="relative">
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">{institutionNameLabel}</label>
+                  <input
+                    type="text"
+                    required
+                    disabled={!formState.institutionType}
+                    value={formState.entity}
+                    onChange={(e) => {
+                      setFormState({ ...formState, entity: e.target.value });
+                      setShowInstitutionSuggestions(true);
+                    }}
+                    onFocus={() => {
+                      if (formState.institutionType) setShowInstitutionSuggestions(true);
+                    }}
+                    onBlur={() => window.setTimeout(() => setShowInstitutionSuggestions(false), 120)}
+                    placeholder={institutionNamePlaceholder}
+                    className={`w-full px-4 py-3 border rounded-xl text-gray-700 focus:outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] transition-all ${
+                      formState.institutionType
+                        ? 'border-gray-200 bg-white'
+                        : 'border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed'
+                    }`}
+                  />
+                  {showInstitutionSuggestions && formState.institutionType && institutionNameSuggestions.length > 0 && (
+                    <div className="absolute z-20 mt-2 max-h-56 w-full overflow-y-auto rounded-xl border border-gray-100 bg-white shadow-xl shadow-black/10">
+                      {institutionNameSuggestions.map((name) => (
+                        <button
+                          key={name}
+                          type="button"
+                          onMouseDown={(event) => {
+                            event.preventDefault();
+                            setFormState({ ...formState, entity: name });
+                            setShowInstitutionSuggestions(false);
+                          }}
+                          className="w-full px-4 py-3 text-left text-sm font-semibold text-gray-700 hover:bg-[#D4AF37]/10 hover:text-gray-950 transition-colors"
+                        >
+                          {name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Assigned Leader</label>
@@ -481,7 +573,7 @@ export function Settings({ onBack, onLogout, onNavigate, role = 'bishop', initia
                     { id: 'email', label: 'Email Address', type: 'email', placeholder: 'name@diocese.ph' },
                     { id: 'contactNumber', label: 'Contact Number', type: 'tel', placeholder: '+63 900 000 0000' },
                     { id: 'position', label: 'Position / Role', type: 'text', placeholder: 'Parish Priest, Admin, etc.' },
-                    { id: 'entityName', label: 'Assigned Entity', type: 'text', placeholder: 'Parish, school, seminary, or office' },
+                    { id: 'entityName', label: 'Assigned Institution', type: 'text', placeholder: 'Parish, school, seminary, or office' },
                     { id: 'emergencyContact', label: 'Emergency Contact', type: 'text', placeholder: 'Name and number' },
                   ].map((field) => (
                     <div key={field.id} className="space-y-2">
@@ -545,7 +637,7 @@ export function Settings({ onBack, onLogout, onNavigate, role = 'bishop', initia
                       </span>
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Entity Type</p>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Institution Type</p>
                       <p className="text-sm font-bold text-gray-900 mt-1 capitalize">{auth.currentUser?.entityType || 'Diocese'}</p>
                     </div>
                   </div>
@@ -640,7 +732,7 @@ export function Settings({ onBack, onLogout, onNavigate, role = 'bishop', initia
                 <Search className="w-5 h-5 absolute left-5 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input 
                   type="text" 
-                  placeholder="Search entities, leaders, or emails..." 
+                  placeholder="Search institutions, leaders, or emails..." 
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-14 pr-8 py-4.5 bg-gray-50 border border-gray-100 rounded-[24px] text-gray-900 focus:outline-none focus:border-[#D4AF37] focus:ring-4 focus:ring-[#D4AF37]/10 transition-all font-medium"
@@ -651,7 +743,7 @@ export function Settings({ onBack, onLogout, onNavigate, role = 'bishop', initia
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b border-gray-100">
-                      <th className="pb-5 font-bold text-gray-400 text-[11px] uppercase tracking-widest w-1/4">Entity Name</th>
+                      <th className="pb-5 font-bold text-gray-400 text-[11px] uppercase tracking-widest w-1/4">Institution Name</th>
                       <th className="pb-5 font-bold text-gray-400 text-[11px] uppercase tracking-widest w-1/4">Assigned Leader</th>
                       <th className="pb-5 font-bold text-gray-400 text-[11px] uppercase tracking-widest w-1/4">Email Address</th>
                       <th className="pb-5 font-bold text-gray-400 text-[11px] uppercase tracking-widest w-1/6">Role</th>
@@ -664,7 +756,7 @@ export function Settings({ onBack, onLogout, onNavigate, role = 'bishop', initia
                         <tr key={account.id} className="group hover:bg-gray-50/50 transition-colors">
                           <td className="py-7 pr-4">
                             <div className="font-bold text-gray-900">{account.entity}</div>
-                            <div className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter mt-1">{account.entityType || 'Entity'}</div>
+                            <div className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter mt-1">{account.entityType || 'Institution'}</div>
                           </td>
                           <td className="py-7 pr-4 text-gray-600 font-medium">{account.leader}</td>
                           <td className="py-7 pr-4 text-gray-500 font-mono text-xs">{account.email}</td>
