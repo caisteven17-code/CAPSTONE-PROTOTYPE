@@ -1334,11 +1334,18 @@ export function BishopDashboard({
                 <h1 className="text-2xl md:text-3xl font-serif font-black text-church-green tracking-tight leading-tight">
                   {entityFilter}
                 </h1>
-                <div className="flex items-center gap-2 text-[10px] text-gray-400 font-black uppercase tracking-[0.15em] mt-1">
-                  <span>{filteredEntities[0]?.vicariate ?? '—'} Vicariate</span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-gold-500"></span>
-                  <span className="text-gold-600">{filteredEntities[0]?.class ?? '—'}</span>
-                </div>
+                {entityType === 'Parishes' && (
+                  <div className="flex items-center gap-2 text-[10px] text-gray-400 font-black uppercase tracking-[0.15em] mt-1">
+                    <span>{filteredEntities[0]?.vicariate ?? '---'} Vicariate</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-gold-500"></span>
+                    <span className="text-gold-600">{filteredEntities[0]?.class ?? '---'}</span>
+                  </div>
+                )}
+                {entityType === 'Diocesan Schools' && (
+                  <div className="flex items-center gap-2 text-[10px] text-gray-400 font-black uppercase tracking-[0.15em] mt-1">
+                    <span>{filteredEntities[0]?.cluster ?? 'Cluster not assigned'}</span>
+                  </div>
+                )}
               </div>
               <div className="space-y-2 mb-4">
                 <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100 hover:bg-gold-50 transition-colors">
@@ -1509,7 +1516,6 @@ export function BishopDashboard({
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-black text-church-green truncate">St. Peter Seminary</p>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider truncate">North Vicariate • Class A</p>
                       <p className="text-[10px] font-medium text-gray-500 mt-1 truncate italic">Last Submitted: 1 week ago</p>
                     </div>
                   </div>
@@ -1522,7 +1528,6 @@ export function BishopDashboard({
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-black text-church-green truncate">Holy Cross Seminary</p>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider truncate">South Vicariate • Class B</p>
                       <p className="text-[10px] font-medium text-gray-500 mt-1 truncate italic">Last Submitted: 3 weeks ago</p>
                     </div>
                   </div>
@@ -1538,7 +1543,7 @@ export function BishopDashboard({
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-black text-church-green truncate">St. Mary Academy</p>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider truncate">Central Vicariate • Class A</p>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider truncate">Cluster 1</p>
                     <p className="text-[10px] font-medium text-gray-500 mt-1 truncate italic">Last Submitted: 2 weeks ago</p>
                   </div>
                 </div>

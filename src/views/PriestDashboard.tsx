@@ -1357,11 +1357,25 @@ export function PriestDashboard({
                   : filterSelectedEntity ?? (filterType !== 'all' ? `All ${filterType === 'parish' ? 'Parishes' : filterType === 'seminary' ? 'Seminaries' : 'Schools'}` : entityInfo.name)}
               </h1>
               <div className="flex items-center gap-2 text-[10px] md:text-xs text-gray-400 font-black uppercase tracking-[0.15em] mt-1">
-                <span>{isPriestOverallView ? 'Diocese of San Pablo' : filterType !== 'all' ? `Filtered · ${filterType}s` : stripVicariatePrefix(entityInfo.type)}</span>
-                <span className="w-1.5 h-1.5 rounded-full bg-gold-500"></span>
-                <span className="text-gold-600">
-                  {isPriestOverallView ? 'Overall' : activeFilterCount > 0 ? `${priestsPendingMedicalResults.length} result${priestsPendingMedicalResults.length !== 1 ? 's' : ''}` : entityInfo.class}
+                <span>
+                  {isPriestOverallView
+                    ? 'Diocese of San Pablo'
+                    : filterType !== 'all'
+                      ? `Filtered · ${filterType}s`
+                      : role === 'school'
+                        ? 'Cluster 1'
+                        : role === 'seminary'
+                          ? 'Seminary'
+                          : stripVicariatePrefix(entityInfo.type)}
                 </span>
+                {(role === 'priest' || isPriestOverallView || activeFilterCount > 0) && (
+                  <>
+                    <span className="w-1.5 h-1.5 rounded-full bg-gold-500"></span>
+                    <span className="text-gold-600">
+                      {isPriestOverallView ? 'Overall' : activeFilterCount > 0 ? `${priestsPendingMedicalResults.length} result${priestsPendingMedicalResults.length !== 1 ? 's' : ''}` : entityInfo.class}
+                    </span>
+                  </>
+                )}
               </div>
               {activeFilterCount > 0 && (
                 <button onClick={clearAllFilters} className="mt-1 text-[10px] text-[#D4AF37] font-bold hover:underline">

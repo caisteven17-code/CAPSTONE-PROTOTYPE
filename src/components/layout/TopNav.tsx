@@ -45,9 +45,9 @@ export function TopNav({
     const entityLabel = role === 'school' ? 'School' : role === 'seminary' ? 'Seminary' : 'Parish';
     const entityName = role === 'school' ? 'SAN PABLO DIOCESAN CATHOLIC SCHOOL' : role === 'seminary' ? 'ST. PETER\'S COLLEGE SEMINARY' : 'SAN ISIDRO LABRADOR PARISH';
     const metadata = role === 'school'
-      ? ['District not assigned', 'St. John the Baptist Vicariate', 'School Director: Rev. Fr. John Doe', 'Access: School']
+      ? ['Cluster 1', 'School Director: Rev. Fr. John Doe', 'Access: School']
       : role === 'seminary'
-        ? ['District not assigned', 'St. John the Baptist Vicariate', 'Rector: Rev. Fr. James Smith', 'Access: Seminary']
+        ? ['Rector: Rev. Fr. James Smith', 'Access: Seminary']
         : ['District not assigned', 'St. John the Baptist Vicariate', 'Parish Priest: Not assigned', 'Access: Parish Priest'];
     const userInitial = role === 'school' ? 'S' : role === 'seminary' ? 'R' : 'B';
 
