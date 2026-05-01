@@ -2729,7 +2729,7 @@ export function BishopDashboard({
             </CardContent>
           </Card>
 
-          {/* Entity Clustering — Parishes only, diocese-wide view only */}
+          {/* Parish Clustering — diocese-wide view only */}
           {entityType === 'Parishes' && !lockEntityFilter && filterMode !== 'per-entity' && (() => {
             const CLASS_COLORS: Record<string, string> = {
               'Class A': '#D4AF37',
@@ -2760,9 +2760,9 @@ export function BishopDashboard({
                 <div className="lg:col-span-7 flex flex-col px-6 pt-6 pb-6 border-r border-white/5">
                   <div className="mb-4">
                     <p className="text-[10px] font-black text-[#D4AF37]/70 uppercase tracking-[0.3em] mb-1">Diocese Analytics</p>
-                    <h3 className="text-xl font-bold text-white">Entity Clustering</h3>
+                    <h3 className="text-xl font-bold text-white">Parish Clustering</h3>
                     <p className="text-xs text-gray-500 mt-2 leading-relaxed max-w-sm">
-                      Parishes are grouped by collection volume and pastoral capacity. Class A entities are high-performing anchor parishes; lower classes represent developing communities requiring targeted diocesan support.
+                      Parishes are grouped by collection volume and pastoral capacity. Class A parishes are high-performing anchors; lower classes represent developing communities requiring targeted diocesan support.
                     </p>
                   </div>
 
@@ -2797,7 +2797,7 @@ export function BishopDashboard({
                 <div className="lg:col-span-5 flex flex-col items-center justify-center px-6 py-6 gap-5">
                   <div className="text-center">
                     <p className="text-[10px] font-black text-[#D4AF37]/70 uppercase tracking-[0.3em] mb-0.5">Class Distribution</p>
-                    <p className="text-xs text-gray-500">{total} entities across {pieData.length} classes</p>
+                    <p className="text-xs text-gray-500">{total} parishes across {pieData.length} classes</p>
                   </div>
 
                   {/* Donut chart */}
@@ -2828,7 +2828,7 @@ export function BishopDashboard({
                     {/* Center label */}
                     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                       <p className="text-3xl font-black text-white leading-none">{total}</p>
-                      <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mt-0.5">Entities</p>
+                      <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mt-0.5">Parishes</p>
                     </div>
                   </div>
 
