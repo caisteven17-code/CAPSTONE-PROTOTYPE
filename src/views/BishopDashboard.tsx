@@ -2628,11 +2628,11 @@ export function BishopDashboard({
             </Card>
             )}
 
-          {/* Row 4: Seasonality */}
+          {/* Row 4: Events */}
           <Card className="bg-[#1A1A1A] text-white border-none shadow-sm">
             <CardHeader>
               <p className="text-[10px] font-bold tracking-widest text-gold-500 uppercase">EVENTS</p>
-              <h3 className="text-2xl font-bold text-white">Seasonality Trends</h3>
+              <h3 className="text-2xl font-bold text-white">Event Trends</h3>
             </CardHeader>
             <CardContent className="p-6 lg:p-10 space-y-12">
               <div className="space-y-6">
@@ -3838,7 +3838,6 @@ export function BishopDashboard({
                       </CardHeader>
                       <CardContent className="space-y-4 mt-4">
                         {[
-                          { name: 'Centralized Purchasing', desc: 'Implement a diocesan-wide procurement system for common supplies (candles, hosts, office materials) to leverage bulk pricing.', impact: '10-15% Savings' },
                           { name: 'Pastoral Program Synergy', desc: 'Encourage neighboring parishes within vicariates to co-host large pastoral events and training seminars to share costs.', impact: '20% Cost Reduction per Event' },
                           { name: 'Preventative Maintenance', desc: 'Establish a mandatory quarterly maintenance schedule for all parish facilities to reduce emergency repair disbursements.', impact: 'Long-term Stability' },
                         ].map((item, i) => (

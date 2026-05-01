@@ -931,7 +931,6 @@ export default function SeminaryAnalyticsDashboard({
         <h3 className="text-2xl font-bold text-white mb-4">Diocese-Wide Expense Optimization</h3>
         <div className="space-y-4">
           {[
-            { name: 'Centralized Purchasing', desc: 'Implement a diocesan-wide procurement system for common supplies (candles, hosts, office materials) to leverage bulk pricing.', impact: '10-15% Savings' },
             { name: 'Pastoral Program Synergy', desc: 'Encourage neighboring parishes within vicariates to co-host large pastoral events and training seminars to share costs.', impact: '20% Cost Reduction per Event' },
             { name: 'Preventative Maintenance', desc: 'Establish a mandatory quarterly maintenance schedule for all parish facilities to reduce emergency repair disbursements.', impact: 'Long-term Stability' },
           ].map((item, i) => (
