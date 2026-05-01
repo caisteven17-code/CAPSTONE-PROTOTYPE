@@ -3408,13 +3408,13 @@ export function BishopDashboard({
 
               {/* Predictions — Seminary */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card className="bg-church-green text-white border-none shadow-sm">
+                <Card className="bg-church-black text-white border-none shadow-sm">
                   <CardHeader>
                     <p className="text-[10px] font-bold tracking-widest uppercase text-gold-500">PREDICTIONS</p>
                     <h3 className="text-2xl font-bold text-white">Collections Rise & Fall</h3>
                   </CardHeader>
                   <CardContent className="space-y-4 mt-4">
-                    <div className="bg-church-green-dark rounded-xl p-6 flex flex-col items-center justify-center text-center">
+                    <div className="bg-white/5 rounded-xl p-6 flex flex-col items-center justify-center text-center border border-white/5">
                       <div className="flex items-center gap-2 text-gold-500 text-4xl font-bold">
                         <ArrowUpRight className="w-8 h-8" /> +14.2%
                       </div>
@@ -3455,13 +3455,13 @@ export function BishopDashboard({
             <>
               {/* Row 2: Predictions, Events, Alerts */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <Card className="bg-church-green text-white border-none shadow-sm">
+                <Card className="bg-church-black text-white border-none shadow-sm">
                   <CardHeader>
                     <p className="text-[10px] font-bold tracking-widest uppercase text-gold-500">PREDICTIONS</p>
                     <h3 className="text-2xl font-bold text-white">Collections Rise & Fall</h3>
                   </CardHeader>
                   <CardContent className="space-y-4 mt-4">
-                    <div className="bg-church-green-dark rounded-xl p-6 flex flex-col items-center justify-center text-center">
+                    <div className="bg-white/5 rounded-xl p-6 flex flex-col items-center justify-center text-center border border-white/5">
                       <div className="flex items-center gap-2 text-gold-500 text-4xl font-bold">
                         <ArrowUpRight className="w-8 h-8" /> +14.2%
                       </div>

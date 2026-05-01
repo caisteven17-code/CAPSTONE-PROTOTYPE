@@ -987,11 +987,11 @@ export default function SeminaryAnalyticsDashboard({
 
         {/* Collections Rise & Fall + Disbursement Rise & Fall + Alerts */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="bg-[#1a472a] rounded-2xl shadow-sm p-6">
+          <div className="bg-[#111111] rounded-2xl shadow-sm p-6">
             <p className="text-[10px] font-bold tracking-widest uppercase text-[#D4AF37] mb-1">PREDICTIONS</p>
             <h3 className="text-2xl font-bold text-white mb-4">Collections Rise & Fall</h3>
             <div className="space-y-4">
-              <div className="bg-[#0f2d1a] rounded-xl p-6 flex flex-col items-center justify-center text-center">
+              <div className="bg-white/5 rounded-xl p-6 flex flex-col items-center justify-center text-center border border-white/5">
                 <div className="flex items-center gap-2 text-[#D4AF37] text-4xl font-bold">
                   <ArrowUpRight className="w-8 h-8" /> +14.2%
                 </div>
