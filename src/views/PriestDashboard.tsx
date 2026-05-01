@@ -2232,9 +2232,9 @@ export function PriestDashboard({
             <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.25em] text-gray-400 mb-1">Prescriptive Analytics</p>
-                <h3 className="text-xl font-black text-church-green">Recommendations / Strategies</h3>
+                <h3 className="text-xl font-black text-church-green">Prescriptive Actions</h3>
                 <p className="text-xs text-gray-400 mt-1">
-                  Actions to improve the <span className="font-bold text-church-green">Parish-Adjusted Stewardship Score</span> — which measures how well actual donations compare to what the parish is expected to generate.
+                  Short actions to improve collections, spending discipline, and report timeliness.
                 </p>
               </div>
               <div className={`flex-shrink-0 flex items-center gap-2 text-[10px] font-black uppercase px-4 py-2 rounded-xl border ${stewardshipData.statusColor}`}>
@@ -2254,8 +2254,8 @@ export function PriestDashboard({
                 <Target size={15} className="text-white" />
               </div>
               <div>
-                <h4 className="text-sm font-black text-church-green">Reduce the Predicted-Actual Collection Gap</h4>
-                <p className="text-[10px] text-gray-500 font-medium">Close the gap between what the parish is expected to collect and what it actually collects</p>
+                <h4 className="text-sm font-black text-church-green">Close Collection Gap</h4>
+                <p className="text-[10px] text-gray-500 font-medium">Bring actual collections closer to forecast.</p>
               </div>
               <span className="ml-auto text-[9px] font-black text-[#D4AF37] bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full uppercase tracking-wider flex-shrink-0">Strategy 1</span>
             </div>
@@ -2264,10 +2264,10 @@ export function PriestDashboard({
                 <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-4">Methods</p>
                 <ul className="space-y-3">
                   {[
-                    'Collection gap analysis — compares monthly actual collections vs model-predicted amounts',
-                    'Month-over-month variance detection — flags months where collections suddenly dropped',
-                    'Rule-based low-performance alert — triggers when actual falls below 80% of predicted',
-                    'Peer benchmarking — compares the priest\'s entity against similar Class parishes',
+                    'Compare actual vs forecast',
+                    'Flag sudden monthly drops',
+                    'Alert below 80% target',
+                    'Benchmark similar parishes',
                   ].map((m, i) => (
                     <li key={i} className="flex items-start gap-2 text-xs text-gray-600">
                       <span className="w-1.5 h-1.5 rounded-full bg-church-green mt-1.5 flex-shrink-0" />{m}
@@ -2279,9 +2279,9 @@ export function PriestDashboard({
                 <p className="text-[9px] font-black uppercase tracking-widest text-[#D4AF37] mb-4">KPI / Metric</p>
                 <ul className="space-y-4">
                   {[
-                    { label: 'Monthly Collection Gap (₱)', desc: 'Actual − Predicted. Target: ₱0 or positive' },
-                    { label: 'Stewardship Lift %', desc: 'Target: ≥ 0% (meaning actual ≥ predicted)' },
-                    { label: 'Consecutive Months On-Target', desc: 'How many months in a row the score is ≥ 100%' },
+                    { label: 'Collection Gap', desc: 'Target: 0 or better' },
+                    { label: 'Stewardship Lift', desc: 'Target: positive' },
+                    { label: 'On-Target Streak', desc: 'Months at 100%+' },
                   ].map((k, i) => (
                     <li key={i} className="flex items-start gap-2">
                       <span className="w-1.5 h-1.5 rounded-full bg-[#D4AF37] mt-1.5 flex-shrink-0" />
@@ -2297,10 +2297,10 @@ export function PriestDashboard({
                 <p className="text-[9px] font-black uppercase tracking-widest text-church-green mb-4">System Output</p>
                 <ul className="space-y-3">
                   {[
-                    'Identify and flag the 2–3 months per year where collections fall furthest below predicted — prioritize action in those months',
-                    'Issue a peak-season engagement advisory before Holy Week and Christmas to maximize offertory',
-                    'Generate a benchmark report comparing this entity to the top 3 same-class parishes in the vicariate',
-                    'Alert the bishop if the Stewardship Lift % is negative for 3 or more consecutive months',
+                    'Flag weak months',
+                    'Send peak-season advisory',
+                    'Show top peer benchmarks',
+                    'Alert on 3-month decline',
                   ].map((o, i) => (
                     <li key={i} className="flex items-start gap-2 text-xs text-gray-600">
                       <span className="w-1.5 h-1.5 rounded-full bg-church-green/50 mt-1.5 flex-shrink-0" />{o}
@@ -2318,8 +2318,8 @@ export function PriestDashboard({
                 <Award size={15} className="text-white" />
               </div>
               <div>
-                <h4 className="text-sm font-black text-church-green">Improve Disbursement Discipline</h4>
-                <p className="text-[10px] text-gray-500 font-medium">Ensure the parish spends within healthy limits and maintains a positive monthly net surplus</p>
+                <h4 className="text-sm font-black text-church-green">Control Disbursements</h4>
+                <p className="text-[10px] text-gray-500 font-medium">Keep spending within the monthly limit.</p>
               </div>
               <span className="ml-auto text-[9px] font-black text-[#D4AF37] bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full uppercase tracking-wider flex-shrink-0">Strategy 2</span>
             </div>
@@ -2328,10 +2328,10 @@ export function PriestDashboard({
                 <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-4">Methods</p>
                 <ul className="space-y-3">
                   {[
-                    'Disbursement ratio tracking — monthly disbursements ÷ monthly collections',
-                    'Rule-based overspending alert — triggers when ratio exceeds 85%',
-                    'Expense categorization — groups spending into Personnel, Operations, Maintenance, and Events',
-                    'Submission timeliness tracking — monitors whether monthly reports are filed on time',
+                    'Track spending ratio',
+                    'Alert above 85%',
+                    'Group major expenses',
+                    'Track report deadlines',
                   ].map((m, i) => (
                     <li key={i} className="flex items-start gap-2 text-xs text-gray-600">
                       <span className="w-1.5 h-1.5 rounded-full bg-church-green mt-1.5 flex-shrink-0" />{m}
@@ -2343,9 +2343,9 @@ export function PriestDashboard({
                 <p className="text-[9px] font-black uppercase tracking-widest text-[#D4AF37] mb-4">KPI / Metric</p>
                 <ul className="space-y-4">
                   {[
-                    { label: 'Disbursement Ratio (%)', desc: 'Target: ≤ 85% of monthly collections' },
-                    { label: 'Net Monthly Surplus (₱)', desc: 'Target: positive every month' },
-                    { label: 'Report Submission Timeliness', desc: 'On-time = filed within the reporting deadline' },
+                    { label: 'Disbursement Ratio', desc: 'Target: 85% or less' },
+                    { label: 'Monthly Surplus', desc: 'Target: positive' },
+                    { label: 'Report Timeliness', desc: 'Target: on time' },
                   ].map((k, i) => (
                     <li key={i} className="flex items-start gap-2">
                       <span className="w-1.5 h-1.5 rounded-full bg-[#D4AF37] mt-1.5 flex-shrink-0" />
@@ -2361,10 +2361,10 @@ export function PriestDashboard({
                 <p className="text-[9px] font-black uppercase tracking-widest text-church-green mb-4">System Output</p>
                 <ul className="space-y-3">
                   {[
-                    'Issue an overspending alert whenever the disbursement ratio exceeds 85% in a given month',
-                    'Recommend deferring non-urgent capital expenses to months with historically high collections (April, December)',
-                    'Flag months where net surplus is negative and notify the bishop automatically',
-                    'Send a report submission reminder 3 days before the deadline to avoid late penalties',
+                    'Send overspending alert',
+                    'Defer non-urgent expenses',
+                    'Flag negative surplus',
+                    'Remind before deadline',
                   ].map((o, i) => (
                     <li key={i} className="flex items-start gap-2 text-xs text-gray-600">
                       <span className="w-1.5 h-1.5 rounded-full bg-church-green/50 mt-1.5 flex-shrink-0" />{o}
@@ -2376,16 +2376,16 @@ export function PriestDashboard({
           </div>
 
           {/* Quick Wins */}
-          <div className="bg-[#1a472a] rounded-2xl p-6">
+          <div className="bg-[#1A1A1A] rounded-2xl p-6">
             <p className="text-[10px] font-black text-[#D4AF37] uppercase tracking-widest mb-1">Quick Wins</p>
             <h3 className="text-xl font-black text-white mb-4">Top 3 Immediate Actions This Month</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {[
-                { rank: '01', action: 'Review last month\'s collections vs predicted — identify the biggest drop and plan a focused offertory drive for the next 4 Sundays', impact: 'Closes Gap vs Predicted', color: 'border-emerald-500' },
-                { rank: '02', action: 'Check this month\'s disbursement ratio — if above 85%, identify which expense category is over-budget and defer it to next quarter', impact: 'Reduces Disbursement Ratio', color: 'border-[#D4AF37]' },
-                { rank: '03', action: 'Submit the monthly financial report before the deadline to maintain a clean stewardship record', impact: 'Avoids Score Penalty', color: 'border-blue-400' },
+                { rank: '01', action: 'Review collection gap and act on the biggest drop.', impact: 'Close Gap', color: 'border-[#D4AF37]' },
+                { rank: '02', action: 'Check disbursement ratio and defer excess costs.', impact: 'Cut Spending', color: 'border-[#D4AF37]' },
+                { rank: '03', action: 'Submit the monthly report before the deadline.', impact: 'Stay Compliant', color: 'border-[#D4AF37]' },
               ].map((item, i) => (
-                <div key={i} className={`bg-white/10 rounded-xl p-5 border-l-4 ${item.color}`}>
+                <div key={i} className={`bg-[#222222] rounded-xl p-5 border-l-4 ${item.color}`}>
                   <p className="text-3xl font-black text-white/20 mb-2 leading-none">{item.rank}</p>
                   <p className="text-sm font-bold text-white leading-snug">{item.action}</p>
                   <span className="inline-block mt-3 text-[10px] font-black text-[#D4AF37] bg-[#D4AF37]/10 px-2 py-0.5 rounded-full">{item.impact}</span>
