@@ -3820,34 +3820,33 @@ export function BishopDashboard({
                       </CardContent>
                     </Card>
 
-                    <Card className="border-none shadow-sm">
-                      <CardHeader>
-                        <p className="text-[10px] font-bold tracking-widest uppercase text-gold-500">ACTION PLAN</p>
-                        <h3 className="text-2xl font-bold text-church-black">Ranking Upgrades</h3>
-                      </CardHeader>
-                      <CardContent className="space-y-4 mt-4">
-                        {(entityType === 'Parishes' ? [
-                          { name: 'Immaculate Conception Parish', desc: 'Increase pledge giving + align disbursements to baseline utilities and wages.', from: 'C', to: 'B' },
-                          { name: 'San Gabriel Archangel Parish', desc: 'Increase pledge giving + align disbursements to baseline utilities and wages.', from: 'D', to: 'C' },
-                          { name: 'San Isidro Labrador Parish', desc: 'Increase pledge giving + align disbursements to baseline utilities and wages.', from: 'D', to: 'C' },
-                        ] : [
-                          { name: 'St. Mary Academy', desc: 'Increase pledge giving + align disbursements to baseline utilities and wages.', from: 'B', to: 'A' },
-                          { name: 'Holy Family School', desc: 'Increase pledge giving + align disbursements to baseline utilities and wages.', from: 'C', to: 'B' },
-                        ]).map((item, i) => (
-                          <div key={i} className="bg-gray-50 border border-gray-100 rounded-xl p-5 flex justify-between items-center gap-4">
-                            <div>
-                              <h4 className="font-bold text-church-black text-sm">{item.name}</h4>
-                              <p className="text-xs text-gray-500 mt-1">{item.desc}</p>
+                    {entityType !== 'Diocesan Schools' && (
+                      <Card className="border-none shadow-sm">
+                        <CardHeader>
+                          <p className="text-[10px] font-bold tracking-widest uppercase text-gold-500">ACTION PLAN</p>
+                          <h3 className="text-2xl font-bold text-church-black">Ranking Upgrades</h3>
+                        </CardHeader>
+                        <CardContent className="space-y-4 mt-4">
+                          {[
+                            { name: 'Immaculate Conception Parish', desc: 'Increase pledge giving + align disbursements to baseline utilities and wages.', from: 'C', to: 'B' },
+                            { name: 'San Gabriel Archangel Parish', desc: 'Increase pledge giving + align disbursements to baseline utilities and wages.', from: 'D', to: 'C' },
+                            { name: 'San Isidro Labrador Parish', desc: 'Increase pledge giving + align disbursements to baseline utilities and wages.', from: 'D', to: 'C' },
+                          ].map((item, i) => (
+                            <div key={i} className="bg-gray-50 border border-gray-100 rounded-xl p-5 flex justify-between items-center gap-4">
+                              <div>
+                                <h4 className="font-bold text-church-black text-sm">{item.name}</h4>
+                                <p className="text-xs text-gray-500 mt-1">{item.desc}</p>
+                              </div>
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                <div className="w-6 h-6 rounded-full bg-church-black text-white flex items-center justify-center text-xs font-bold">{item.from}</div>
+                                <ArrowUpRight className="w-4 h-4 text-gold-500" />
+                                <div className="w-6 h-6 rounded-full bg-gold-500 text-church-black flex items-center justify-center text-xs font-bold">{item.to}</div>
+                              </div>
                             </div>
-                            <div className="flex items-center gap-2 flex-shrink-0">
-                              <div className="w-6 h-6 rounded-full bg-church-black text-white flex items-center justify-center text-xs font-bold">{item.from}</div>
-                              <ArrowUpRight className="w-4 h-4 text-gold-500" />
-                              <div className="w-6 h-6 rounded-full bg-gold-500 text-church-black flex items-center justify-center text-xs font-bold">{item.to}</div>
-                            </div>
-                          </div>
-                        ))}
-                      </CardContent>
-                    </Card>
+                          ))}
+                        </CardContent>
+                      </Card>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
